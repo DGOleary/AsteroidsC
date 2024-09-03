@@ -9,8 +9,6 @@
 
 #define WINDOW_WIDTH (825)
 #define WINDOW_HEIGHT (800)
-#define ACCEL (3)
-#define DECEL (1)
 
 //function used to check if boundaries are the same, assumes boundaries don't start at the same origin
 int compareBoundary(void *bound1, void *bound2){
@@ -128,8 +126,6 @@ int main(int argc, char *argv[])
     ship.w=25;
     ship.h=25;
 
-    //SDL_Rect *ghosts = (SDL_Rect*)malloc(4*sizeof(SDL_Rect));
-
     ship.x = (WINDOW_WIDTH - ship.w) / 2;
 
     float x_pos = (WINDOW_WIDTH - ship.w) / 2;
@@ -155,27 +151,18 @@ int main(int argc, char *argv[])
     ship_val.dir = 0;
 
     bool close_requested = false;
-
-    //create boundaries for the maze
-    Boundary bottom;
-    bottom.x=0;
-    bottom.y=375;
-    bottom.w=25;
-    bottom.h=25;
-
-    HashSet *boundaries = createHashSet();
-
-    HashSetAdd(boundaries, &bottom, boundaryHash);
     
     // set the positions in the struct
     ship.y = (int)y_pos;
     ship.x = (int)x_pos;
-
-    bool lrDirection = false;
     
     int speed = 0;
     // allows the adjustment of how long it takes for the ship to speed down
     int accelCount = 50;
+
+    //linked list that has blaster shots
+    LinkedList *shots = createLinkedList();
+
 
     while (!close_requested)
     {
@@ -187,62 +174,58 @@ int main(int argc, char *argv[])
             case SDL_QUIT:
                 close_requested = true;
                 break;
-            case SDL_KEYDOWN:
-                switch (event.key.keysym.scancode)
-                {
-                case SDL_SCANCODE_W:
-                case SDL_SCANCODE_UP:
-                    up = 1;
-                    down = left = right = 0;
-                    break;
-                case SDL_SCANCODE_S:
-                case SDL_SCANCODE_DOWN:
-                    down = 1;
-                    up = left = right = 0;
-                    break;
-                case SDL_SCANCODE_A:
-                case SDL_SCANCODE_LEFT:
-                    left = 1;
-                    down = up = right = 0;
-                    ship_val.dir -= 5;
-                    break;
-                case SDL_SCANCODE_D:
-                case SDL_SCANCODE_RIGHT:
-                    right = 1;
-                    down = left = up = 0;
-                    ship_val.dir += 5;
-                    break;
-                }
-                break;
-            //     //TODO remove this code and edit so he continues in the same direction and can only move in available directions
-            case SDL_KEYUP:
-                switch (event.key.keysym.scancode)
-                {
-                case SDL_SCANCODE_W:
-                case SDL_SCANCODE_UP:
-                    up = 0;
-                    break;
-                case SDL_SCANCODE_S:
-                case SDL_SCANCODE_DOWN:
-                    down = 0;
-                    break;
-                case SDL_SCANCODE_A:
-                case SDL_SCANCODE_LEFT:
-                    left = 0;
-                    break;
-                case SDL_SCANCODE_D:
-                case SDL_SCANCODE_RIGHT:
-                    right = 0;
-                    break;
-                }
+            // case SDL_KEYDOWN:
+            //     switch (event.key.keysym.scancode)
+            //     {
+            //     case SDL_SCANCODE_W:
+            //     case SDL_SCANCODE_UP:
+            //         up = 1;
+            //         down = left = right = 0;
+            //         break;
+            //     case SDL_SCANCODE_S:
+            //     case SDL_SCANCODE_DOWN:
+            //         down = 1;
+            //         up = left = right = 0;
+            //         break;
+            //     case SDL_SCANCODE_A:
+            //     case SDL_SCANCODE_LEFT:
+            //         left = 1;
+            //         down = up = right = 0;
+            //         ship_val.dir -= 5;
+            //         break;
+            //     case SDL_SCANCODE_D:
+            //     case SDL_SCANCODE_RIGHT:
+            //         right = 1;
+            //         down = left = up = 0;
+            //         ship_val.dir += 5;
+            //         break;
+            //     }
+            //     break;
+            // case SDL_KEYUP:
+            //     switch (event.key.keysym.scancode)
+            //     {
+            //     case SDL_SCANCODE_W:
+            //     case SDL_SCANCODE_UP:
+            //         up = 0;
+            //         break;
+            //     case SDL_SCANCODE_S:
+            //     case SDL_SCANCODE_DOWN:
+            //         down = 0;
+            //         break;
+            //     case SDL_SCANCODE_A:
+            //     case SDL_SCANCODE_LEFT:
+            //         left = 0;
+            //         break;
+            //     case SDL_SCANCODE_D:
+            //     case SDL_SCANCODE_RIGHT:
+            //         right = 0;
+            //         break;
+            //     }
                 break;
             }
         }
 
-        // printf("%d\n", left);
-        // printf("%d\n", right);
-        // printf("\n");
-
+        //ship movement code
         const Uint8* keystates = SDL_GetKeyboardState(NULL);
         if(keystates[SDL_SCANCODE_LEFT]){
             left = 1;
@@ -255,50 +238,8 @@ int main(int argc, char *argv[])
             ship_val.dir += 5;
         }
         ship_val.dir %= 361;
-        // bool currKey = false;
-        // if(keystates[SDL_SCANCODE_LEFT]){
-        //     currKey = false;
-        // }else if(keystates[SDL_SCANCODE_RIGHT]){
-        //     currKey = true;
-        // }
 
-
-        // if(keystates[SDL_SCANCODE_LEFT] && keystates[SDL_SCANCODE_RIGHT]){
-        //         lrDirection = !lrDirection;
-        // }else if(keystates[SDL_SCANCODE_LEFT] || keystates[SDL_SCANCODE_RIGHT]){
-        //     if(keystates[SDL_SCANCODE_LEFT]){
-        //         lrDirection = false;
-        //     }else if(keystates[SDL_SCANCODE_RIGHT]){
-        //         lrDirection = true;
-        //     }
-        // }
-
-        // if(keystates[SDL_SCANCODE_LEFT] || keystates[SDL_SCANCODE_RIGHT]){
-        //     if(!lrDirection){
-        //             left = 1;
-        //             down = up = right = 0;
-        //             ship_val.dir -= 5;
-        //         }else{
-        //             right = 1;
-        //             down = up = left = 0;
-        //             ship_val.dir += 5;
-        //         }
-        // }
-            
-
-        
-
-        // if(keystates[SDL_SCANCODE_LEFT]){
-        //     left = 1;
-        //     down = up = right = 0;
-        //     ship_val.dir -= 5;
-        // }else if(keystates[SDL_SCANCODE_RIGHT]){
-        //     right = 1;
-        //     down = up = left = 0;
-        //     ship_val.dir += 5;
-        // }
-
-
+        //ship has acceleration that goes to 0 over time when the thrusters aren't engaged
         if(keystates[SDL_SCANCODE_UP]){
             up = 1;
             down = left = right = 0;
@@ -307,17 +248,10 @@ int main(int argc, char *argv[])
             if(speed > 10){
                 speed = 10;
             }
-            // printf("%d\n", ship_val.dir+90);
-            // printf("%lf\n", 3*cos(rad)-.0001);
-            // printf("%lf\n",  3*sin(rad)-.0001);
-            
-            
-            // printf("%d\n", ship.x);
-            // printf("%d\n", ship.y);
-            // printf("\n");
         }else{
             if(speed < 0){
                 speed = 0;
+            //this counter allows the post thruster acceleration period to be adjusted for how long it lasts
             }else if(speed > 0 && accelCount % 5 == 0){
                 speed--;
             }
@@ -328,68 +262,60 @@ int main(int argc, char *argv[])
             }
         }
 
-        printf("%d\n", speed);
-
+        //this code controls where the ship ends up getting put after calculating the speed/acceleration
         double rad = (double)(ship_val.dir+90) * (M_PI/180.0);
+        //seperates the vector to find the x and y position, due to rounding/float issues the number is truncated
         ship.x -= speed*(cos(rad)-.0001);
         ship.y -= speed*(sin(rad)-.0001);
 
-        if(keystates[SDL_SCANCODE_DOWN]){
-            down = 1;
-            up = left = right = 0;
+        //boundary checks
+        if(ship.x > 825){
+            ship.x = 0;
         }
 
-        // x_vel = y_vel = 0;
-        // if (up && !down)
-        // {
-        //     y_vel = -SPEED;
-        // }
-        // if (!up && down)
-        // {
-        //     y_vel = SPEED;
-        // }
-        // if (left && !right)
-        // {
-        //     x_vel = -SPEED;
-        // }
-        // if (!left && right)
-        // {
-        //     x_vel = SPEED;
-        // }s
-
-        // // update positions
-        // x_pos += x_vel / 60;
-        // y_pos += y_vel / 60;
+        if(ship.x < -25){
+            ship.x = 825;
+        }
         
-        // if (x_pos <= 0)
-        //     x_pos = 0;
-        // if (y_pos <= 0)
-        //     y_pos = 0;
-        // if (x_pos >= WINDOW_WIDTH - pac.w)
-        //     x_pos = WINDOW_WIDTH - pac.w;
-        // if (y_pos >= WINDOW_HEIGHT - pac.h)
-        //     y_pos = WINDOW_HEIGHT - pac.h;
+        if(ship.y > 800){
+            ship.y = 0;
+        }
 
-        // Boundary *pos = (Boundary *)malloc(sizeof(Boundary));
-        // pos->x=x_pos;
-        // pos->y=y_pos;
-        // pos->h=25;
-        // pos->y=25;
-        // printf("%d\n",323);
-        // if(HashSetContains(boundaries, pos, boundaryHash, compareBoundary)){
-        //     printf("bounds check");
-        // }
+        if(ship.y < -25){
+            ship.y = 800;
+        }
+
+        //code for shooting lasers
+        if(keystates[SDL_SCANCODE_SPACE]){
+            //creates shot on top of ship
+            SDL_Rect *shot = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+            shot->x = ship.x;
+            shot->y = ship.y;
+            shot->w = 25;
+            shot->h = 25;
+            Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
+            temp->frame_offsets[0] = (int[]){0, 25};
+
+            shots = LinkedListAdd(shots, temp);
+            // LinkedList *tempList = LinkedListAdd(shots, shot);
+            // shots = tempList;
+        }
 
         // clear the window
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
 
+        if(shots->value != NULL){
+            animateStill(&obj, (Sprite_Values*)shots->value);
+        }
+        
         // draw the ship to the window
         animateStill(&obj, &ship_val);
+
         //SDL_RenderCopyEx(rend, tex, &area, &ship, 0, NULL, SDL_FLIP_NONE);
         SDL_RenderPresent(rend);
 
-        // wait 1/60th of a second
+        // wait 1/60th of a second to target 60 fps
         SDL_Delay(1000 / 60);
 
     }
@@ -399,19 +325,3 @@ int main(int argc, char *argv[])
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
-
-
-
-
-
-//TODO function that will make background
-// void drawLevel(SDL_Renderer *rend, SDL_Texture *tex, Sprite_Values **vals){
-//     *vals=(Sprite_Values*)malloc(10*sizeof(Sprite_Values));
-//     for(int i=0;i<10;i++){
-//         //rects for the location on screen and 
-//         SDL_Rect *temploc=(SDL_Rect*)malloc(sizeof(SDL_Rect));
-//         SDL_Rect *tempat=(SDL_Rect*)malloc(sizeof(SDL_Rect));
-//         vals[i]=createBGTile(temp, 0, 0, 25, 25, SDL_FLIP_NONE);
-//     }
-//     SDL_RenderCopy(rend, tex, )
-// }
