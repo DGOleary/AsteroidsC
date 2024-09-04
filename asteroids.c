@@ -162,7 +162,12 @@ int main(int argc, char *argv[])
 
     //linked list that has blaster shots
     LinkedList *shots = createLinkedList();
+    //linked list that has the timer for the shots
+    LinkedList *shotsTimer = createLinkedList();
 
+    //controls the possible firing speed
+    bool addShot = true;
+    int addShotCounter = 0;
 
     while (!close_requested)
     {
@@ -286,7 +291,16 @@ int main(int argc, char *argv[])
         }
 
         //code for shooting lasers
-        if(keystates[SDL_SCANCODE_SPACE]){
+        addShotCounter++;
+
+        if(addShotCounter == 15){
+            addShot = true;
+            addShotCounter = 0;
+        }
+
+        if(keystates[SDL_SCANCODE_SPACE] && addShot){
+            addShot = false;
+            addShotCounter = 0;
             //creates shot on top of ship
             SDL_Rect *shot = (SDL_Rect*)malloc(sizeof(SDL_Rect));
             shot->x = ship.x;
@@ -297,6 +311,9 @@ int main(int argc, char *argv[])
             temp->frame_offsets[0] = (int[]){0, 25};
 
             shots = LinkedListAdd(shots, temp);
+            int *shotTimer = (int*)malloc(sizeof(int));
+            *shotTimer = 50;
+            shotsTimer = LinkedListAdd(shotsTimer, shotTimer);
             // LinkedList *tempList = LinkedListAdd(shots, shot);
             // shots = tempList;
         }
@@ -306,7 +323,49 @@ int main(int argc, char *argv[])
         SDL_RenderClear(rend);
 
         if(shots->value != NULL){
-            animateStill(&obj, (Sprite_Values*)shots->value);
+            LinkedList *temp = shots;
+            LinkedList *tempCounter = shotsTimer;
+
+            while(temp != NULL){
+                //printf("loop\n");
+                animateStill(&obj, (Sprite_Values*)temp->value);
+                int tempInt = *(int*)(tempCounter->value);
+                *(int*)(tempCounter->value) = tempInt - 1;
+                //printf("%d\n", *(int*)(tempCounter->value));
+
+                //checks if the counter has ran out for this laser bolt
+                //TODO convert to using a queue instead of a stack
+                if(*(int*)(tempCounter->value) == 0){
+                    //printf("end\n");
+                    //in the case the next is null, it needs to get these before the memory is freed
+                    temp = temp->next;
+                    //frees the value before temp becomes null if it is the end
+                    free(tempCounter->value);
+                    tempCounter = tempCounter->next;
+                    Sprite_Values *del = (Sprite_Values*)LinkedListPop(&shots);
+                    for(int i=0;i<del->total_frames;i++){
+                        free(del->frame_offsets[i]);
+                    }
+                    free(del->frame_offsets);
+                    free(del);
+                    LinkedListPop(&shotsTimer);
+
+                    //initialize them to empty lists if they're fully emptied 
+                    if(shots == NULL){
+                        //printf("reset\n");
+                        shots = createLinkedList();
+                        shotsTimer = createLinkedList();
+                    }
+                }else{
+                    //printf("next\n");
+                    temp = temp->next;
+                    //printf("%d\n", temp);
+                    tempCounter = tempCounter->next;
+                }
+                
+            }
+            //printf("\n");
+
         }
         
         // draw the ship to the window

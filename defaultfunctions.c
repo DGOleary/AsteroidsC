@@ -4,7 +4,7 @@
 //LinkedList function implementations
 
 LinkedList *createLinkedList(){
-    LinkedList *ret=(LinkedList*)malloc(sizeof(LinkedList));;
+    LinkedList *ret=(LinkedList*)malloc(sizeof(LinkedList));
     ret->length=0;
     ret->next=NULL;
     ret->value=NULL;
@@ -14,6 +14,7 @@ LinkedList *createLinkedList(){
 LinkedList *LinkedListAdd(LinkedList *list, void *value){
     if(list->length==0){
         list->length=1;
+        list->next=NULL;
         list->value=value;
         return list;
     }
