@@ -39,6 +39,50 @@ void *LinkedListPop(LinkedList **listptr){
     return val;
 }
 
+Queue *createQueue(){
+    Queue *ret=(Queue*)malloc(sizeof(Queue));
+    ret->length=0;
+    ret->next=NULL;
+    ret->last=NULL;
+    ret->value=NULL;
+    return ret;
+}
+
+void QueueAdd(Queue *queue, void *value){
+    if(queue->length==0){
+        queue->length=1;
+        queue->next=NULL;
+        queue->last=queue;
+        queue->value=value;
+        return;
+    }
+    Queue *next=(Queue*)malloc(sizeof(Queue));
+    next->length=0;
+    next->next=NULL;
+    next->last=next;
+    next->value=value;
+    queue->last->next=next;
+    queue->last=next;
+    queue->length++;
+}
+
+void *QueuePoll(Queue **queueptr){
+    if(*queueptr==NULL){
+        return NULL;
+    }
+    Queue *queue=*queueptr;
+    //stores the head's value
+    void* val=queue->value;
+    if(queue->next!=NULL){
+        queue->next->length=queue->length-1;
+    }
+    //updates the head of the list to the next value
+    *queueptr=queue->next;
+    //frees the head of the list
+    free(queue); 
+    return val;
+}
+
 HashSet *createHashSet(){
     HashSet *ret = (HashSet*)malloc(sizeof(HashSet));
     //defaults value to 50

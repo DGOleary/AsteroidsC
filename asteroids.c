@@ -161,9 +161,9 @@ int main(int argc, char *argv[])
     int accelCount = 50;
 
     //linked list that has blaster shots
-    LinkedList *shots = createLinkedList();
+    Queue *shots = createQueue();
     //linked list that has the timer for the shots
-    LinkedList *shotsTimer = createLinkedList();
+    Queue *shotsTimer = createQueue();
 
     //controls the possible firing speed
     bool addShot = true;
@@ -310,21 +310,22 @@ int main(int argc, char *argv[])
             Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
             temp->frame_offsets[0] = (int[]){0, 25};
 
-            shots = LinkedListAdd(shots, temp);
+             QueueAdd(shots, temp);
             int *shotTimer = (int*)malloc(sizeof(int));
             *shotTimer = 50;
-            shotsTimer = LinkedListAdd(shotsTimer, shotTimer);
+            QueueAdd(shotsTimer, shotTimer);
             // LinkedList *tempList = LinkedListAdd(shots, shot);
             // shots = tempList;
         }
 
         // clear the window
+
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
 
         if(shots->value != NULL){
-            LinkedList *temp = shots;
-            LinkedList *tempCounter = shotsTimer;
+            Queue *temp = shots;
+            Queue *tempCounter = shotsTimer;
 
             while(temp != NULL){
                 //printf("loop\n");
@@ -334,27 +335,31 @@ int main(int argc, char *argv[])
                 //printf("%d\n", *(int*)(tempCounter->value));
 
                 //checks if the counter has ran out for this laser bolt
-                //TODO convert to using a queue instead of a stack
                 if(*(int*)(tempCounter->value) == 0){
-                    //printf("end\n");
+                    Queue *displayVals = tempCounter;
+                    // while(displayVals != NULL){
+                    //     printf("%d ", *(int*)displayVals->value);
+                    //     displayVals=displayVals->next;
+                    // } 
+                    // printf("\n");
                     //in the case the next is null, it needs to get these before the memory is freed
                     temp = temp->next;
                     //frees the value before temp becomes null if it is the end
                     free(tempCounter->value);
                     tempCounter = tempCounter->next;
-                    Sprite_Values *del = (Sprite_Values*)LinkedListPop(&shots);
+                    Sprite_Values *del = (Sprite_Values*)QueuePoll(&shots);
                     for(int i=0;i<del->total_frames;i++){
                         free(del->frame_offsets[i]);
                     }
                     free(del->frame_offsets);
                     free(del);
-                    LinkedListPop(&shotsTimer);
+                    QueuePoll(&shotsTimer);
 
                     //initialize them to empty lists if they're fully emptied 
                     if(shots == NULL){
                         //printf("reset\n");
-                        shots = createLinkedList();
-                        shotsTimer = createLinkedList();
+                        shots = createQueue();
+                        shotsTimer = createQueue();
                     }
                 }else{
                     //printf("next\n");

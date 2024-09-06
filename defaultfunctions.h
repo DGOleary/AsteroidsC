@@ -26,6 +26,29 @@ LinkedList *LinkedListAdd(LinkedList *list, void *value);
 //function to pop the head of the list off
 void *LinkedListPop(LinkedList **listptr);
 
+//Queue functions and data
+typedef struct Queue Queue;
+
+struct Queue{
+    //pointer to next object in list
+    Queue *next;
+    //pointer to the last item in the list to attach new elements to
+    Queue *last;
+    //generic holder for the value
+    void *value;
+    //size of the list
+    int length;
+};
+
+//creates a new Queue
+Queue *createQueue();
+
+//function to add to the back of a queue
+void QueueAdd(Queue *queue, void *value);
+
+//function to pop the first element of a queue off
+void *QueuePoll(Queue **queueptr);
+
 //HashSet functions and data
 
 typedef struct {
