@@ -270,8 +270,8 @@ int main(int argc, char *argv[])
         //this code controls where the ship ends up getting put after calculating the speed/acceleration
         double rad = (double)(ship_val.dir+90) * (M_PI/180.0);
         //seperates the vector to find the x and y position, due to rounding/float issues the number is truncated
-        ship.x -= speed*(cos(rad)-.0001);
-        ship.y -= speed*(sin(rad)-.0001);
+        ship.x -= (int)(speed*(cos(rad)-.0001));
+        ship.y -= (int)(speed*(sin(rad)-.0001));
 
         //boundary checks
         if(ship.x > 825){
@@ -303,8 +303,29 @@ int main(int argc, char *argv[])
             addShotCounter = 0;
             //creates shot on top of ship
             SDL_Rect *shot = (SDL_Rect*)malloc(sizeof(SDL_Rect));
-            shot->x = ship.x;
-            shot->y = ship.y;
+            double rad = (double)(ship_val.dir+90) * (M_PI/180.0);
+            printf("%d\n", (int)(25*(cos(rad)-.0001)));
+            shot->x = ship.x - (int)(25*(cos(rad)-.0001));
+            printf("%d\n", shot->x);
+            shot->y = ship.y - (int)(25*(sin(rad)-.0001));
+
+            //test the boundaries for the bullets
+            if(shot->x > 825){
+            shot->x = 0;
+            }
+
+            if(shot->x < -25){
+                shot->x = 825;
+            }
+            
+            if(shot->y > 800){
+                shot->y = 0;
+            }
+
+            if(shot->y < -25){
+                shot->y = 800;
+            }
+
             shot->w = 25;
             shot->h = 25;
             Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, ship_val.dir, SDL_FLIP_NONE);
@@ -332,8 +353,24 @@ int main(int argc, char *argv[])
 
             while(temp != NULL){
                 double rad = (double)(((Sprite_Values*)temp->value)->dir+90) * (M_PI/180.0);
-                ((Sprite_Values*)temp->value)->loc->x -= 2*(cos(rad)-.0001);
-                ((Sprite_Values*)temp->value)->loc->y -= 2*(sin(rad)-.0001);
+                ((Sprite_Values*)temp->value)->loc->x -= (int)(20*(cos(rad)-.0001));
+                ((Sprite_Values*)temp->value)->loc->y -= (int)(20*(sin(rad)-.0001));
+                //test the boundaries for the bullets
+                if(((Sprite_Values*)temp->value)->loc->x > 825){
+                ((Sprite_Values*)temp->value)->loc->x = 0;
+                }
+
+                if(((Sprite_Values*)temp->value)->loc->x < -25){
+                    ((Sprite_Values*)temp->value)->loc->x = 825;
+                }
+                
+                if(((Sprite_Values*)temp->value)->loc->y > 800){
+                    ((Sprite_Values*)temp->value)->loc->y = 0;
+                }
+
+                if(((Sprite_Values*)temp->value)->loc->y < -25){
+                    ((Sprite_Values*)temp->value)->loc->y = 800;
+                }
                 animateStill(&obj, (Sprite_Values*)temp->value);
                 int tempInt = *(int*)(tempCounter->value);
                 *(int*)(tempCounter->value) = tempInt - 1;
