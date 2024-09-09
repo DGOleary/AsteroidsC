@@ -307,10 +307,13 @@ int main(int argc, char *argv[])
             shot->y = ship.y;
             shot->w = 25;
             shot->h = 25;
-            Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
+            Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, ship_val.dir, SDL_FLIP_NONE);
             temp->frame_offsets[0] = (int[]){0, 25};
-
-             QueueAdd(shots, temp);
+            printf("%d\n", ship_val.dir+90);
+            printf("%d\n", shot->x);
+            printf("%d\n", shot->y);
+            printf("\n");
+            QueueAdd(shots, temp);
             int *shotTimer = (int*)malloc(sizeof(int));
             *shotTimer = 50;
             QueueAdd(shotsTimer, shotTimer);
@@ -328,7 +331,9 @@ int main(int argc, char *argv[])
             Queue *tempCounter = shotsTimer;
 
             while(temp != NULL){
-                //printf("loop\n");
+                double rad = (double)(((Sprite_Values*)temp->value)->dir+90) * (M_PI/180.0);
+                ((Sprite_Values*)temp->value)->loc->x -= 2*(cos(rad)-.0001);
+                ((Sprite_Values*)temp->value)->loc->y -= 2*(sin(rad)-.0001);
                 animateStill(&obj, (Sprite_Values*)temp->value);
                 int tempInt = *(int*)(tempCounter->value);
                 *(int*)(tempCounter->value) = tempInt - 1;
@@ -342,6 +347,10 @@ int main(int argc, char *argv[])
                     //     displayVals=displayVals->next;
                     // } 
                     // printf("\n");
+                    printf("%d\n", ((Sprite_Values*)temp->value)->loc->x);
+                    printf("%d\n", ((Sprite_Values*)temp->value)->loc->y);
+                    printf("\n");
+
                     //in the case the next is null, it needs to get these before the memory is freed
                     temp = temp->next;
                     //frees the value before temp becomes null if it is the end
@@ -352,6 +361,7 @@ int main(int argc, char *argv[])
                         free(del->frame_offsets[i]);
                     }
                     free(del->frame_offsets);
+                    free(del->loc);
                     free(del);
                     QueuePoll(&shotsTimer);
 
