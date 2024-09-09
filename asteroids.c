@@ -39,6 +39,40 @@ int boundaryHash(HashSet *set, void *add){
     return hash;
 }
 
+//function that creates a laser bolt
+void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
+    double rad = (double)(ship_val->dir+90) * (M_PI/180.0);
+    printf("%d\n", (int)(25*(cos(rad)-.0001)));
+    shot->x = ship->x - (int)(25*(cos(rad)-.0001));
+    printf("%d\n", shot->x);
+    shot->y = ship->y - (int)(25*(sin(rad)-.0001));
+}
+
+void shotCheck(Queue *shots, Queue *shotCounter, SDL_Objs *obj){
+    Sprite_Values *temp = ((Sprite_Values*)shots->value); 
+    double rad = (double)(temp->dir+90) * (M_PI/180.0);
+    temp->loc->x -= (int)(20*(cos(rad)-.0001));
+    temp->loc->y -= (int)(20*(sin(rad)-.0001));
+    //test the boundaries for the bullets
+    if(temp->loc->x > 825){
+    temp->loc->x = 0;
+    }
+
+    if(temp->loc->x < -25){
+        temp->loc->x = 825;
+    }
+    
+    if(temp->loc->y > 800){
+        temp->loc->y = 0;
+    }
+
+    if(temp->loc->y < -25){
+        temp->loc->y = 800;
+    }
+    animateStill(obj, temp);
+    int tempInt = *(int*)(shotCounter->value);
+    *(int*)(shotCounter->value) = tempInt - 1;
+}
 
 int main(int argc, char *argv[])
 {
@@ -301,13 +335,10 @@ int main(int argc, char *argv[])
         if(keystates[SDL_SCANCODE_SPACE] && addShot){
             addShot = false;
             addShotCounter = 0;
+
             //creates shot on top of ship
             SDL_Rect *shot = (SDL_Rect*)malloc(sizeof(SDL_Rect));
-            double rad = (double)(ship_val.dir+90) * (M_PI/180.0);
-            printf("%d\n", (int)(25*(cos(rad)-.0001)));
-            shot->x = ship.x - (int)(25*(cos(rad)-.0001));
-            printf("%d\n", shot->x);
-            shot->y = ship.y - (int)(25*(sin(rad)-.0001));
+            createShot(shot, &ship, &ship_val);
 
             //test the boundaries for the bullets
             if(shot->x > 825){
@@ -352,41 +383,16 @@ int main(int argc, char *argv[])
             Queue *tempCounter = shotsTimer;
 
             while(temp != NULL){
-                double rad = (double)(((Sprite_Values*)temp->value)->dir+90) * (M_PI/180.0);
-                ((Sprite_Values*)temp->value)->loc->x -= (int)(20*(cos(rad)-.0001));
-                ((Sprite_Values*)temp->value)->loc->y -= (int)(20*(sin(rad)-.0001));
-                //test the boundaries for the bullets
-                if(((Sprite_Values*)temp->value)->loc->x > 825){
-                ((Sprite_Values*)temp->value)->loc->x = 0;
-                }
-
-                if(((Sprite_Values*)temp->value)->loc->x < -25){
-                    ((Sprite_Values*)temp->value)->loc->x = 825;
-                }
-                
-                if(((Sprite_Values*)temp->value)->loc->y > 800){
-                    ((Sprite_Values*)temp->value)->loc->y = 0;
-                }
-
-                if(((Sprite_Values*)temp->value)->loc->y < -25){
-                    ((Sprite_Values*)temp->value)->loc->y = 800;
-                }
-                animateStill(&obj, (Sprite_Values*)temp->value);
-                int tempInt = *(int*)(tempCounter->value);
-                *(int*)(tempCounter->value) = tempInt - 1;
+                shotCheck(temp, tempCounter, &obj);
                 //printf("%d\n", *(int*)(tempCounter->value));
 
                 //checks if the counter has ran out for this laser bolt
                 if(*(int*)(tempCounter->value) == 0){
                     Queue *displayVals = tempCounter;
-                    // while(displayVals != NULL){
-                    //     printf("%d ", *(int*)displayVals->value);
-                    //     displayVals=displayVals->next;
-                    // } 
+
+                    // printf("%d\n", ((Sprite_Values*)temp->value)->loc->x);
+                    // printf("%d\n", ((Sprite_Values*)temp->value)->loc->y);
                     // printf("\n");
-                    printf("%d\n", ((Sprite_Values*)temp->value)->loc->x);
-                    printf("%d\n", ((Sprite_Values*)temp->value)->loc->y);
-                    printf("\n");
 
                     //in the case the next is null, it needs to get these before the memory is freed
                     temp = temp->next;
@@ -404,19 +410,15 @@ int main(int argc, char *argv[])
 
                     //initialize them to empty lists if they're fully emptied 
                     if(shots == NULL){
-                        //printf("reset\n");
                         shots = createQueue();
                         shotsTimer = createQueue();
                     }
                 }else{
-                    //printf("next\n");
                     temp = temp->next;
-                    //printf("%d\n", temp);
                     tempCounter = tempCounter->next;
                 }
                 
             }
-            //printf("\n");
 
         }
         
