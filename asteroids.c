@@ -42,9 +42,9 @@ int boundaryHash(HashSet *set, void *add){
 //function that creates a laser bolt
 void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
     double rad = (double)(ship_val->dir+90) * (M_PI/180.0);
-    printf("%d\n", (int)(25*(cos(rad)-.0001)));
+    //printf("%d\n", (int)(25*(cos(rad)-.0001)));
     shot->x = ship->x - (int)(25*(cos(rad)-.0001));
-    printf("%d\n", shot->x);
+    //printf("%d\n", shot->x);
     shot->y = ship->y - (int)(25*(sin(rad)-.0001));
 }
 
@@ -72,6 +72,25 @@ void shotCheck(Queue *shots, Queue *shotCounter, SDL_Objs *obj){
     animateStill(obj, temp);
     int tempInt = *(int*)(shotCounter->value);
     *(int*)(shotCounter->value) = tempInt - 1;
+}
+
+void spawnAsteroid(int* cnt, LinkedList **list){
+    if(rand() <= 326 && *cnt < 10){ 
+        SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+        rect->h = 50;
+        rect->w = 50;
+        rect->x = rand() % 600;
+        rect->y = rand() % 600;
+        Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
+        int astSprite = (rand() % 9) + 1;
+
+        //create the array in dynamic memory
+        sprt->frame_offsets[0]=malloc(2 * sizeof(int));
+        sprt->frame_offsets[0][0] = 25 * astSprite;
+        sprt->frame_offsets[0][1] = 0;
+        *list = LinkedListAdd(*list, sprt);
+        *cnt = *cnt+1;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -177,10 +196,9 @@ int main(int argc, char *argv[])
     obj.rend = rend;
     obj.tex = tex;
 
-    Sprite_Values ship_val = *createSpriteValues(&ship, 5, 2, 25, 25, 0, SDL_FLIP_NONE);
+    Sprite_Values ship_val = *createSpriteValues(&ship, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
     // manually making the array of frame values
     ship_val.frame_offsets[0] = (int[]){0, 0};
-    ship_val.frame_offsets[1] = (int[]){25, 0};
     ship_val.flip = SDL_FLIP_NONE;
     ship_val.dir = 0;
 
@@ -202,6 +220,10 @@ int main(int argc, char *argv[])
     //controls the possible firing speed
     bool addShot = true;
     int addShotCounter = 0;
+
+    //counter for amount of asteroids
+    int astrdCount = 0;
+    LinkedList *asteroids = createLinkedList();
 
     while (!close_requested)
     {
@@ -361,10 +383,10 @@ int main(int argc, char *argv[])
             shot->h = 25;
             Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, ship_val.dir, SDL_FLIP_NONE);
             temp->frame_offsets[0] = (int[]){0, 25};
-            printf("%d\n", ship_val.dir+90);
-            printf("%d\n", shot->x);
-            printf("%d\n", shot->y);
-            printf("\n");
+            // printf("%d\n", ship_val.dir+90);
+            // printf("%d\n", shot->x);
+            // printf("%d\n", shot->y);
+            // printf("\n");
             QueueAdd(shots, temp);
             int *shotTimer = (int*)malloc(sizeof(int));
             *shotTimer = 50;
@@ -373,10 +395,14 @@ int main(int argc, char *argv[])
             // shots = tempList;
         }
 
+        //checks if an asteroid should be spawned
+        spawnAsteroid(&astrdCount, &asteroids);
         // clear the window
 
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
+
+        //begins code that draws to the screen
 
         if(shots->value != NULL){
             Queue *temp = shots;
@@ -384,7 +410,6 @@ int main(int argc, char *argv[])
 
             while(temp != NULL){
                 shotCheck(temp, tempCounter, &obj);
-                //printf("%d\n", *(int*)(tempCounter->value));
 
                 //checks if the counter has ran out for this laser bolt
                 if(*(int*)(tempCounter->value) == 0){
@@ -420,6 +445,17 @@ int main(int argc, char *argv[])
                 
             }
 
+        }
+
+        LinkedList *displayAsteroids = asteroids;
+        if((Sprite_Values*)displayAsteroids->value != NULL){
+            while(displayAsteroids != NULL){
+                // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][0]);
+                // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][1]);
+                // printf("\n");
+                animateStill(&obj, (Sprite_Values*)displayAsteroids->value);
+                displayAsteroids = displayAsteroids->next;
+            }
         }
         
         // draw the ship to the window
