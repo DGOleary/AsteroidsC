@@ -78,7 +78,7 @@ void shotCheck(Queue *shots, Queue *shotCounter, SDL_Objs *obj){
     *(int*)(shotCounter->value) = tempInt - 1;
 }
 
-void spawnAsteroid(int* cnt, LinkedList **list){
+void spawnAsteroid(int* cnt, LinkedList **list, LinkedList **objList, int *id){
     if(rand() <= 326 && *cnt < 10){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
@@ -94,7 +94,9 @@ void spawnAsteroid(int* cnt, LinkedList **list){
         sprt->frame_offsets[0][0] = 25 * astSprite;
         sprt->frame_offsets[0][1] = 0;
         *list = LinkedListAdd(*list, sprt);
-        *cnt = *cnt+1;
+        *objList = LinkedListAdd(*objList, createObject("asteroid", *id, sprt));
+        *id++;
+        *cnt++;
     }
 }
 
@@ -236,6 +238,7 @@ int main(int argc, char *argv[])
     obj.tex = tex;
 
     Sprite_Values ship_val = *createSpriteValues(&ship, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
+    Object ship_obj = *createObject("ship", 0, &ship_val);
     // manually making the array of frame values
     ship_val.frame_offsets[0] = (int[]){0, 0};
     ship_val.flip = SDL_FLIP_NONE;
@@ -255,6 +258,10 @@ int main(int argc, char *argv[])
     Queue *shots = createQueue();
     //linked list that has the timer for the shots
     Queue *shotsTimer = createQueue();
+    //list that holds bounding objects for shots collisions
+    Queue *shotsObjs = createQueue();
+    
+    int shotsCounter = 0;
 
     //controls the possible firing speed
     bool addShot = true;
@@ -263,6 +270,8 @@ int main(int argc, char *argv[])
     //counter for amount of asteroids
     int astrdCount = 0;
     LinkedList *asteroids = createLinkedList();
+    LinkedList *asteroidObjs = createLinkedList();
+    int astrdId = 0;
 
     //creation of the boundaries, these hold the position of each object on screen so collisions can be detected
     Boundary boundaries[33][32];
@@ -407,28 +416,28 @@ int main(int argc, char *argv[])
             ship.y = WINDOW_HEIGHT;
         }
 
-        if(ship.x / 25 != oldX || ship.y / 25 != oldY){
-            boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &ship);
-            LinkedList *last = NULL;
-            LinkedList *temp = boundaries[oldY][oldX].objs;
+        // if(ship.x / 25 != oldX || ship.y / 25 != oldY){
+        //     boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &ship);
+        //     LinkedList *last = NULL;
+        //     LinkedList *temp = boundaries[oldY][oldX].objs;
 
-            while(temp != NULL){
-                //check the memory addresses because that is what is registered, so it uses the memory addresses as a key
-                if(((Object*)temp->value)->obj == &ship){
-                    if(last == NULL){
-                        LinkedListPop(&temp);
-                        break;
-                    }else{
-                        last->next = temp->next;
-                        temp->value = NULL;
-                        free(temp);
-                        break;
-                    }
-                }
+        //     while(temp != NULL){
+                
+        //         if(((Object*)temp->value)->obj == &ship){
+        //             if(last == NULL){
+        //                 LinkedListPop(&temp);
+        //                 break;
+        //             }else{
+        //                 last->next = temp->next;
+        //                 temp->value = NULL;
+        //                 free(temp);
+        //                 break;
+        //             }
+        //         }
 
-                temp = temp->next;
-            }
-        }
+        //         temp = temp->next;
+        //     }
+        // }
         printf("%d\n", ship.x / 25);
         printf("%d\n", ship.y / 25);
         printf("\n");
@@ -470,11 +479,10 @@ int main(int argc, char *argv[])
             shot->h = 25;
             Sprite_Values *temp = createSpriteValues(shot, 1, 1, 25, 25, ship_val.dir, SDL_FLIP_NONE);
             temp->frame_offsets[0] = (int[]){0, 25};
-            // printf("%d\n", ship_val.dir+90);
-            // printf("%d\n", shot->x);
-            // printf("%d\n", shot->y);
-            // printf("\n");
+
             QueueAdd(shots, temp);
+            //create an object for shot collisions 
+            QueueAdd(shotsObjs, createObject("shot", shotsCounter++, temp));
             int *shotTimer = (int*)malloc(sizeof(int));
             *shotTimer = 50;
             QueueAdd(shotsTimer, shotTimer);
@@ -483,7 +491,7 @@ int main(int argc, char *argv[])
         }
 
         //checks if an asteroid should be spawned
-        spawnAsteroid(&astrdCount, &asteroids);
+        spawnAsteroid(&astrdCount, &asteroids, &asteroidObjs, &astrdId);
         // clear the window
 
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
@@ -494,6 +502,7 @@ int main(int argc, char *argv[])
         if(shots->value != NULL){
             Queue *temp = shots;
             Queue *tempCounter = shotsTimer;
+            Queue *tempObj = shotsObjs;
 
             while(temp != NULL){
                 shotCheck(temp, tempCounter, &obj);
@@ -519,15 +528,21 @@ int main(int argc, char *argv[])
                     free(del->loc);
                     free(del);
                     QueuePoll(&shotsTimer);
+                    tempObj = tempObj->next;
+                    Object *delObj = QueuePoll(&shotsObjs);
+                    free(delObj->type);
+                    free(delObj);
 
                     //initialize them to empty lists if they're fully emptied 
                     if(shots == NULL){
                         shots = createQueue();
                         shotsTimer = createQueue();
+                        shotsObjs = createQueue();
                     }
                 }else{
                     temp = temp->next;
                     tempCounter = tempCounter->next;
+                    tempObj = tempObj->next;
                 }
                 
             }

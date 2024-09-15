@@ -63,6 +63,21 @@ Sprite_Values *createSpriteValues(SDL_Rect *loc, int frames_per, int total_frame
     return obj;
 }
 
+Object *createObject(char *type, int id, void *obj){
+    Object *ret = (Object*)malloc(sizeof(Object));
+    ret->type = (char*)malloc(sizeof(type));
+    int i = 0;
+    while(type[i] != '\0'){
+        ret->type[i] = type[i];
+        i++;
+    }
+    ret->type[i] = '\0';
+    ret->id = id;
+    ret->obj = obj;
+
+    return ret;
+}
+
 BG_Image *createBGImage(SDL_Rect *loc, int w, int h, SDL_RendererFlip flip){
     BG_Image *obj=(BG_Image*)malloc(sizeof(BG_Image));
     obj->loc=loc;

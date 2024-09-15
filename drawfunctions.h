@@ -78,6 +78,9 @@ void animateStill(SDL_Objs *obj, Sprite_Values *values);
 //function to create a Sprite_Values struct
 Sprite_Values *createSpriteValues(SDL_Rect *loc, int frames_per, int total_frames, int w, int h, int dir, SDL_RendererFlip flip);
 
+//function to create an Object struct
+Object *createObject(char *type, int id, void *obj);
+
 //function to create a background tile
 BG_Image *createBGImage(SDL_Rect *loc, int w, int h, SDL_RendererFlip flip);
 
