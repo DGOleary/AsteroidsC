@@ -12,6 +12,9 @@ LinkedList *createLinkedList(){
 }
 
 LinkedList *LinkedListAdd(LinkedList *list, void *value){
+    if(list == NULL){
+        return createLinkedList();
+    }
     if(list->length==0){
         list->length=1;
         list->next=NULL;
@@ -36,6 +39,7 @@ void *LinkedListPop(LinkedList **listptr){
     *listptr=list->next;
     //frees the head of the list
     free(list); 
+    list = NULL;
     return val;
 }
 
@@ -80,6 +84,7 @@ void *QueuePoll(Queue **queueptr){
     *queueptr=queue->next;
     //frees the head of the list
     free(queue); 
+    queue = NULL;
     return val;
 }
 
@@ -152,9 +157,10 @@ void resizeHash(HashSet *set, int (*hashFunc)(HashSet*, void*)){
         LinkedList *temp = old[i];
         while(temp!=NULL&&temp->length!=0){
             HashSetAdd(newSize, temp->value, hashFunc);
-            //goes to the next spot
+            //goes to the next spot and frees entry
             LinkedListPop(&temp);
         }
+
     }
     //frees the old array
     free(*set->set);

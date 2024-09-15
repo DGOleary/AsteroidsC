@@ -8,7 +8,7 @@
 
 #define TEX_ATLAS_SIZE (500)
 
-//struct to hole SDL objects used to draw to the screen
+//struct to hold SDL objects used to draw to the screen
 typedef struct {
     SDL_Renderer *rend;
     SDL_Texture *tex;
@@ -54,7 +54,19 @@ typedef struct {
     //the width (positive to right) and height (positive down) of the boundary rectangle
     int w;
     int h;
+
+    //list of objects inside the box
+    LinkedList *objs;
 } Boundary;
+
+//struct that acts as a wrapper so objects can be of the same type
+typedef struct {
+    //identifiers to give a spefific type and and id in that type
+    char *type;
+    int id;
+    //whatever it points to
+    void *obj;
+} Object;
 
 
 //function to do a constant animation on a sprite

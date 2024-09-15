@@ -39,9 +39,13 @@ int boundaryHash(HashSet *set, void *add){
     return hash;
 }
 
+double toRadians(int deg){
+    return (double)(deg) * (M_PI/180.0);
+}
+
 //function that creates a laser bolt
 void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
-    double rad = (double)(ship_val->dir+90) * (M_PI/180.0);
+    double rad = toRadians(ship_val->dir+90);
     //printf("%d\n", (int)(25*(cos(rad)-.0001)));
     shot->x = ship->x - (int)(25*(cos(rad)-.0001));
     //printf("%d\n", shot->x);
@@ -50,24 +54,24 @@ void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
 
 void shotCheck(Queue *shots, Queue *shotCounter, SDL_Objs *obj){
     Sprite_Values *temp = ((Sprite_Values*)shots->value); 
-    double rad = (double)(temp->dir+90) * (M_PI/180.0);
+    double rad = toRadians(temp->dir+90);
     temp->loc->x -= (int)(20*(cos(rad)-.0001));
     temp->loc->y -= (int)(20*(sin(rad)-.0001));
     //test the boundaries for the bullets
-    if(temp->loc->x > 825){
-    temp->loc->x = 0;
+    if(temp->loc->x > WINDOW_WIDTH){
+    temp->loc->x = -25;
     }
 
     if(temp->loc->x < -25){
-        temp->loc->x = 825;
+        temp->loc->x = WINDOW_WIDTH;
     }
     
-    if(temp->loc->y > 800){
-        temp->loc->y = 0;
+    if(temp->loc->y > WINDOW_HEIGHT){
+        temp->loc->y = -25;
     }
 
     if(temp->loc->y < -25){
-        temp->loc->y = 800;
+        temp->loc->y = WINDOW_HEIGHT;
     }
     animateStill(obj, temp);
     int tempInt = *(int*)(shotCounter->value);
@@ -79,9 +83,10 @@ void spawnAsteroid(int* cnt, LinkedList **list){
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
-        rect->x = rand() % 600;
-        rect->y = rand() % 600;
-        Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
+        rect->x = rand() % WINDOW_WIDTH;
+        rect->y = rand() % WINDOW_HEIGHT;
+        Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
+        //("%d\n", sprt->dir);
         int astSprite = (rand() % 9) + 1;
 
         //create the array in dynamic memory
@@ -90,6 +95,40 @@ void spawnAsteroid(int* cnt, LinkedList **list){
         sprt->frame_offsets[0][1] = 0;
         *list = LinkedListAdd(*list, sprt);
         *cnt = *cnt+1;
+    }
+}
+
+void asteroidMove(Sprite_Values *asteroid){
+    double rad = toRadians(asteroid->dir);
+    asteroid->loc->x -= (int)(2*(cos(rad)-.0001));
+    asteroid->loc->y -= (int)(2*(sin(rad)-.0001));
+    if(asteroid->loc->x > WINDOW_WIDTH){
+    asteroid->loc->x = -50;
+    }
+
+    if(asteroid->loc->x < -50){
+        asteroid->loc->x = WINDOW_WIDTH;
+    }
+    
+    if(asteroid->loc->y > WINDOW_HEIGHT){
+        asteroid->loc->y = -50;
+    }
+
+    if(asteroid->loc->y < -50){
+        asteroid->loc->y = WINDOW_HEIGHT;
+    }
+}
+
+void displayAsteroids(LinkedList *list, SDL_Objs *obj){
+    if((Sprite_Values*)list->value != NULL){
+        while(list != NULL){
+            // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][0]);
+            // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][1]);
+            // printf("\n");
+            asteroidMove((Sprite_Values*)list->value);
+            animateStill(obj, (Sprite_Values*)list->value);
+            list = list->next;
+        }
     }
 }
 
@@ -225,6 +264,24 @@ int main(int argc, char *argv[])
     int astrdCount = 0;
     LinkedList *asteroids = createLinkedList();
 
+    //creation of the boundaries, these hold the position of each object on screen so collisions can be detected
+    Boundary boundaries[33][32];
+    for(int i = 0; i < 33; i++){
+        for(int j = 0; j < 32; j++){
+            boundaries[i][j].w = 25;
+            boundaries[i][j].h = 25;
+            boundaries[i][j].x = j*25;
+            boundaries[i][j].y = i*25;
+            boundaries[i][j].objs = createLinkedList();
+        }
+    }
+
+    //register the ship's inititial position
+    Object shipObject;
+    shipObject.obj = &ship;
+
+    boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &shipObject);
+
     while (!close_requested)
     {
         SDL_Event event;
@@ -323,28 +380,58 @@ int main(int argc, char *argv[])
             }
         }
 
+        //save the old boundary box the ship inhabited
+        int oldX = ship.x / 25;
+        int oldY = ship.y / 25;
+
         //this code controls where the ship ends up getting put after calculating the speed/acceleration
-        double rad = (double)(ship_val.dir+90) * (M_PI/180.0);
+        double rad = toRadians(ship_val.dir+90);
         //seperates the vector to find the x and y position, due to rounding/float issues the number is truncated
         ship.x -= (int)(speed*(cos(rad)-.0001));
         ship.y -= (int)(speed*(sin(rad)-.0001));
 
         //boundary checks
-        if(ship.x > 825){
+        if(ship.x > WINDOW_WIDTH){
             ship.x = 0;
         }
 
         if(ship.x < -25){
-            ship.x = 825;
+            ship.x = WINDOW_WIDTH;
         }
         
-        if(ship.y > 800){
+        if(ship.y > WINDOW_HEIGHT){
             ship.y = 0;
         }
 
         if(ship.y < -25){
-            ship.y = 800;
+            ship.y = WINDOW_HEIGHT;
         }
+
+        if(ship.x / 25 != oldX || ship.y / 25 != oldY){
+            boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &ship);
+            LinkedList *last = NULL;
+            LinkedList *temp = boundaries[oldY][oldX].objs;
+
+            while(temp != NULL){
+                //check the memory addresses because that is what is registered, so it uses the memory addresses as a key
+                if(((Object*)temp->value)->obj == &ship){
+                    if(last == NULL){
+                        LinkedListPop(&temp);
+                        break;
+                    }else{
+                        last->next = temp->next;
+                        temp->value = NULL;
+                        free(temp);
+                        break;
+                    }
+                }
+
+                temp = temp->next;
+            }
+        }
+        printf("%d\n", ship.x / 25);
+        printf("%d\n", ship.y / 25);
+        printf("\n");
 
         //code for shooting lasers
         addShotCounter++;
@@ -363,20 +450,20 @@ int main(int argc, char *argv[])
             createShot(shot, &ship, &ship_val);
 
             //test the boundaries for the bullets
-            if(shot->x > 825){
-            shot->x = 0;
+            if(shot->x > WINDOW_WIDTH){
+            shot->x = -25;
             }
 
             if(shot->x < -25){
-                shot->x = 825;
+                shot->x = WINDOW_WIDTH;
             }
             
-            if(shot->y > 800){
-                shot->y = 0;
+            if(shot->y > WINDOW_HEIGHT){
+                shot->y = -25;
             }
 
             if(shot->y < -25){
-                shot->y = 800;
+                shot->y = WINDOW_HEIGHT;
             }
 
             shot->w = 25;
@@ -447,16 +534,7 @@ int main(int argc, char *argv[])
 
         }
 
-        LinkedList *displayAsteroids = asteroids;
-        if((Sprite_Values*)displayAsteroids->value != NULL){
-            while(displayAsteroids != NULL){
-                // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][0]);
-                // printf("%d\n", ((Sprite_Values*)displayAsteroids->value)->frame_offsets[0][1]);
-                // printf("\n");
-                animateStill(&obj, (Sprite_Values*)displayAsteroids->value);
-                displayAsteroids = displayAsteroids->next;
-            }
-        }
+        displayAsteroids(asteroids, &obj);
         
         // draw the ship to the window
         animateStill(&obj, &ship_val);
@@ -474,3 +552,4 @@ int main(int argc, char *argv[])
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
+
