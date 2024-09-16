@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <math.h>
+#include <string.h>
 #include "drawfunctions.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -95,8 +96,8 @@ void spawnAsteroid(int* cnt, LinkedList **list, LinkedList **objList, int *id){
         sprt->frame_offsets[0][1] = 0;
         *list = LinkedListAdd(*list, sprt);
         *objList = LinkedListAdd(*objList, createObject("asteroid", *id, sprt));
-        *id++;
-        *cnt++;
+        *id = *id+1;
+        *cnt = *cnt+1;
     }
 }
 
@@ -238,7 +239,7 @@ int main(int argc, char *argv[])
     obj.tex = tex;
 
     Sprite_Values ship_val = *createSpriteValues(&ship, 1, 1, 25, 25, 0, SDL_FLIP_NONE);
-    Object ship_obj = *createObject("ship", 0, &ship_val);
+    Object shipObject = *createObject("ship", 0, &ship);
     // manually making the array of frame values
     ship_val.frame_offsets[0] = (int[]){0, 0};
     ship_val.flip = SDL_FLIP_NONE;
@@ -286,9 +287,6 @@ int main(int argc, char *argv[])
     }
 
     //register the ship's inititial position
-    Object shipObject;
-    shipObject.obj = &ship;
-
     boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &shipObject);
 
     while (!close_requested)
@@ -392,6 +390,9 @@ int main(int argc, char *argv[])
         //save the old boundary box the ship inhabited
         int oldX = ship.x / 25;
         int oldY = ship.y / 25;
+        printf("row %d\n", ship.y / 25);
+        printf("col %d\n", ship.x / 25);
+        printf("\n");
 
         //this code controls where the ship ends up getting put after calculating the speed/acceleration
         double rad = toRadians(ship_val.dir+90);
@@ -416,36 +417,38 @@ int main(int argc, char *argv[])
             ship.y = WINDOW_HEIGHT;
         }
 
-        // if(ship.x / 25 != oldX || ship.y / 25 != oldY){
-        //     boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &ship);
-        //     LinkedList *last = NULL;
-        //     LinkedList *temp = boundaries[oldY][oldX].objs;
+        //checks if the ship changed it's spot in the grid since the last movement
+        if(ship.x / 25 != oldX || ship.y / 25 != oldY){
+            //add the ship to it's new location
+            boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &shipObject);
+            LinkedList *last = NULL;
+            LinkedList *temp = boundaries[oldY][oldX].objs;
 
-        //     while(temp != NULL){
-                
-        //         if(((Object*)temp->value)->obj == &ship){
-        //             if(last == NULL){
-        //                 LinkedListPop(&temp);
-        //                 break;
-        //             }else{
-        //                 last->next = temp->next;
-        //                 temp->value = NULL;
-        //                 free(temp);
-        //                 break;
-        //             }
-        //         }
+            while(temp != NULL){
+                if(strcmp(((Object*)temp->value)->type, shipObject.type) == 0){
+                    //if last is null then that means the ship is the head of the list of attached objects and can be removed, otherwise the list needs to be joined in the middle
+                    if(last == NULL){
+                        LinkedListPop(&temp);
+                        break;
+                    }else{
+                        last->next = temp->next;
+                        temp->value = NULL;
+                        free(temp);
+                        break;
+                    }
+                }
 
-        //         temp = temp->next;
-        //     }
-        // }
-        printf("%d\n", ship.x / 25);
-        printf("%d\n", ship.y / 25);
-        printf("\n");
+                temp = temp->next;
+            }
+        }
+        // printf("%d\n", ship.x / 25);
+        // printf("%d\n", ship.y / 25);
+        // printf("\n");
 
         //code for shooting lasers
         addShotCounter++;
 
-        if(addShotCounter == 15){
+        if(addShotCounter == 8){
             addShot = true;
             addShotCounter = 0;
         }
