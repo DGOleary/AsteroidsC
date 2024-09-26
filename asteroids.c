@@ -20,6 +20,42 @@ double toRadians(int deg){
     return (double)(deg) * (M_PI/180.0);
 }
 
+void setObjectInBoundary(Boundary **boundaries, Object *object, int oldX, int oldY, int newX, int newY){    
+    //checks if the ship changed it's spot in the grid since the last movement
+    if(newX != oldX || newY != oldY){
+        //add the ship to it's new location
+        boundaries[newX][newY].objs = LinkedListAdd(boundaries[newX][newY].objs, object);
+        printf("row new %d\n", newX);
+        printf("col new %d\n", newY);
+        printf("\n");
+        LinkedList *last = NULL;
+        LinkedList *temp = boundaries[oldX][oldY].objs;
+
+        if(temp == NULL || temp->value == NULL){
+            temp = NULL;
+        }
+
+        while(temp != NULL){
+            if(strcmp(((Object*)temp->value)->type, object->type) == 0){
+                //if last is null then that means the ship is the head of the list of attached objects and can be removed, otherwise the list needs to be joined in the middle
+                if(last == NULL){
+                    LinkedListPop(&temp);
+                    if(temp == NULL){
+                        boundaries[oldX][oldY].objs = createLinkedList();
+                    }
+                    break;
+                }else{
+                    last->next = temp->next;
+                    temp->value = NULL;
+                    free(temp);
+                    break;
+                }
+            }
+
+            temp = temp->next;
+        }
+    }
+}
 //function that creates a laser bolt
 void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
     double rad = toRadians(ship_val->dir+90);
@@ -245,14 +281,14 @@ int main(int argc, char *argv[])
         for(int j = 0; j < 32; j++){
             boundaries[i][j].w = 25;
             boundaries[i][j].h = 25;
-            boundaries[i][j].x = j*25;
-            boundaries[i][j].y = i*25;
+            boundaries[i][j].x = i*25;
+            boundaries[i][j].y = j*25;
             boundaries[i][j].objs = createLinkedList();
         }
     }
 
     //register the ship's inititial position
-    boundaries[ship.y / 25][ship.x / 25].objs = LinkedListAdd(boundaries[ship.y / 25][ship.x / 25].objs, &shipObject);
+    boundaries[ship.x / 25][ship.y / 25].objs = LinkedListAdd(boundaries[ship.x / 25][ship.y / 25].objs, &shipObject);
 
     while (!close_requested)
     {
@@ -400,38 +436,39 @@ int main(int argc, char *argv[])
             addShotCounter = 0;
         }
 
-        int shipRow = ship.y / 25;
-        int shipCol = ship.x / 25;
+        int shipY = ship.y / 25;
+        int shipX = ship.x / 25;
         //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-        if(shipRow < 0){
-            shipRow = 0;
+        if(shipY < 0){
+            shipY = 0;
         }
-        if(shipRow >= WINDOW_HEIGHT/25){
-            shipRow = (WINDOW_HEIGHT/25)-1;
+        if(shipY >= WINDOW_HEIGHT/25){
+            shipY = (WINDOW_HEIGHT/25)-1;
         }
 
-        if(shipCol < 0){
-            shipCol = 0;
+        if(shipX < 0){
+            shipX = 0;
         }
-        if(shipCol >= WINDOW_WIDTH/25){
-            shipCol = (WINDOW_WIDTH/25)-1;
+        if(shipX >= WINDOW_WIDTH/25){
+            shipX = (WINDOW_WIDTH/25)-1;
         }
         
-        if(shipRow < 0 || shipRow >= WINDOW_HEIGHT/25 || shipCol < 0 || shipCol >= WINDOW_WIDTH/25){
-            printf("row err %d\n", shipRow);
-            printf("col err %d\n", shipCol);
+        if(shipX < 0 || shipX >= WINDOW_HEIGHT/25 || shipY < 0 || shipY >= WINDOW_WIDTH/25){
+            printf("row err %d\n", shipX);
+            printf("col err %d\n", shipY);
             printf("\n");
         }
 
+        //TODO encapsulate
         //checks if the ship changed it's spot in the grid since the last movement
-        if(shipCol != oldX || shipRow != oldY){
+        if(shipX != oldX || shipY != oldY){
             //add the ship to it's new location
-            boundaries[shipRow][shipCol].objs = LinkedListAdd(boundaries[shipRow][shipCol].objs, &shipObject);
-            printf("row new %d\n", shipRow);
-            printf("col new %d\n", shipCol);
+            boundaries[shipX][shipY].objs = LinkedListAdd(boundaries[shipX][shipY].objs, &shipObject);
+            printf("row new %d\n", shipX);
+            printf("col new %d\n", shipY);
             printf("\n");
             LinkedList *last = NULL;
-            LinkedList *temp = boundaries[oldY][oldX].objs;
+            LinkedList *temp = boundaries[oldX][oldY].objs;
 
             if(temp == NULL || temp->value == NULL){
                 temp = NULL;
@@ -443,7 +480,7 @@ int main(int argc, char *argv[])
                     if(last == NULL){
                         LinkedListPop(&temp);
                         if(temp == NULL){
-                            boundaries[oldY][oldX].objs = createLinkedList();
+                            boundaries[oldX][oldY].objs = createLinkedList();
                         }
                         break;
                     }else{
