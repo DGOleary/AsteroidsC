@@ -92,6 +92,12 @@ Object *createObject(char *type, int id, void *obj){
     return ret;
 }
 
+void freeObject(Object *obj){
+    free(obj->type);
+    free(obj->obj);
+    free(obj);
+}
+
 BG_Image *createBGImage(SDL_Rect *loc, int w, int h, SDL_RendererFlip flip){
     BG_Image *obj=(BG_Image*)malloc(sizeof(BG_Image));
     obj->loc=loc;

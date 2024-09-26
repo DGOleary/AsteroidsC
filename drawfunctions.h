@@ -84,6 +84,9 @@ void freeSpriteValues(Sprite_Values *val);
 //function to create an Object struct
 Object *createObject(char *type, int id, void *obj);
 
+//function to free an Object struct
+void freeObject(Object *obj);
+
 //function to create a background tile
 BG_Image *createBGImage(SDL_Rect *loc, int w, int h, SDL_RendererFlip flip);
 
