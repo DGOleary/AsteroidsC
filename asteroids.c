@@ -20,7 +20,7 @@ double toRadians(int deg){
     return (double)(deg) * (M_PI/180.0);
 }
 
-void setObjectInBoundary(Boundary **boundaries, Object *object, int oldX, int oldY, int newX, int newY){    
+void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], Object *object, int oldX, int oldY, int newX, int newY){    
     //checks if the ship changed it's spot in the grid since the last movement
     if(newX != oldX || newY != oldY){
         //add the ship to it's new location
@@ -276,9 +276,12 @@ int main(int argc, char *argv[])
     int asteroidCount = 0;
 
     //creation of the boundaries, these hold the position of each object on screen so collisions can be detected
-    Boundary boundaries[33][32];
-    for(int i = 0; i < 33; i++){
-        for(int j = 0; j < 32; j++){
+    int w = WINDOW_WIDTH/25;
+    int h = WINDOW_HEIGHT/25;
+
+    Boundary boundaries[w][h];
+    for(int i = 0; i < w; i++){
+        for(int j = 0; j < h; j++){
             boundaries[i][j].w = 25;
             boundaries[i][j].h = 25;
             boundaries[i][j].x = i*25;
@@ -459,41 +462,8 @@ int main(int argc, char *argv[])
             printf("\n");
         }
 
-        //TODO encapsulate
         //checks if the ship changed it's spot in the grid since the last movement
-        if(shipX != oldX || shipY != oldY){
-            //add the ship to it's new location
-            boundaries[shipX][shipY].objs = LinkedListAdd(boundaries[shipX][shipY].objs, &shipObject);
-            printf("row new %d\n", shipX);
-            printf("col new %d\n", shipY);
-            printf("\n");
-            LinkedList *last = NULL;
-            LinkedList *temp = boundaries[oldX][oldY].objs;
-
-            if(temp == NULL || temp->value == NULL){
-                temp = NULL;
-            }
-
-            while(temp != NULL){
-                if(strcmp(((Object*)temp->value)->type, shipObject.type) == 0){
-                    //if last is null then that means the ship is the head of the list of attached objects and can be removed, otherwise the list needs to be joined in the middle
-                    if(last == NULL){
-                        LinkedListPop(&temp);
-                        if(temp == NULL){
-                            boundaries[oldX][oldY].objs = createLinkedList();
-                        }
-                        break;
-                    }else{
-                        last->next = temp->next;
-                        temp->value = NULL;
-                        free(temp);
-                        break;
-                    }
-                }
-
-                temp = temp->next;
-            }
-        }
+        setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
 
         if(keystates[SDL_SCANCODE_SPACE] && addShot){
             //for(int i = 0; i < 5; i++){
