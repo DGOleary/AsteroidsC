@@ -53,13 +53,17 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
     if(newX >= WINDOW_WIDTH/25){
         newX = (WINDOW_WIDTH/25)-1;
     } 
-    //checks if the ship changed it's spot in the grid since the last movement
+    //checks if the object changed it's spot in the grid since the last movement
     if(newX != oldX || newY != oldY){
-        //add the ship to it's new location
+        //add the object to it's new location
         boundaries[newX][newY].objs = LinkedListAdd(boundaries[newX][newY].objs, object);
-        printf("row new %d\n", newX);
-        printf("col new %d\n", newY);
-        printf("\n");
+        if(strcmp(object->type, "asteroid") != 0){
+            printf("%s\n", object->type);
+        }
+        
+        // printf("row new %d\n", newX);
+        // printf("col new %d\n", newY);
+        // printf("\n");
         LinkedList *last = NULL;
         LinkedList *temp = boundaries[oldX][oldY].objs;
 
@@ -68,22 +72,44 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
         }
 
         while(temp != NULL){
-            if(strcmp(((Object*)temp->value)->type, object->type) == 0){
+            //TODO fix this it overwrites memory
+            if(strcmp(((Object*)temp->value)->type, object->type) == 0 && ((Object*)temp->value)->id == object->id){
                 //if last is null then that means the ship is the head of the list of attached objects and can be removed, otherwise the list needs to be joined in the middle
+                // if(last == NULL){
+                //     LinkedListPop(&temp);
+                //     if(temp == NULL){
+                //         boundaries[oldX][oldY].objs = createLinkedList();
+                //     }
+                //     break;
+                // }else{
+                //     last->next = temp->next;
+                //     temp->value = NULL;
+                //     free(temp);
+                //     break;
+                // }
+                //connect the list before and after the current object
+                LinkedList *rest = temp->next;
+                temp->next = NULL;
+                temp->value = NULL;
+                free(temp);
+                temp = NULL;
+                if(last != NULL && last->value != NULL){
+                    last->next = rest;
+                }
                 if(last == NULL){
-                    LinkedListPop(&temp);
-                    if(temp == NULL){
+                    if(rest != NULL){
+                        boundaries[oldX][oldY].objs = rest;
+                    }else{
                         boundaries[oldX][oldY].objs = createLinkedList();
                     }
-                    break;
-                }else{
-                    last->next = temp->next;
-                    temp->value = NULL;
-                    free(temp);
-                    break;
+                    
                 }
-            }
+                break;
 
+                printf("%s\n", "same");
+            }
+            //printf("%s\n", ((Object*)temp->value)->type);
+            last = temp;
             temp = temp->next;
         }
     }
@@ -130,15 +156,15 @@ void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WIN
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
-        rect->x = rand() % WINDOW_WIDTH;
-        rect->y = rand() % WINDOW_HEIGHT;
+        rect->x = (WINDOW_WIDTH - 25) / 2;//rand() % WINDOW_WIDTH;
+        rect->y = (WINDOW_HEIGHT - 25) / 2;//rand() % WINDOW_HEIGHT;
         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
         int astSprite = (rand() % 9) + 1;
 
         //create the array in dynamic memory
         sprt->frame_offsets[0][0] = 25 * astSprite;
         sprt->frame_offsets[0][1] = 0;
-        Asteroid *as = malloc(sizeof(Asteroid));
+        Asteroid *as = (Asteroid*)malloc(sizeof(Asteroid));
         Object *ob = createObject("asteroid", *id, sprt);
         as->obj = ob;
         as->spv = sprt;

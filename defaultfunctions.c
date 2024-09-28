@@ -40,6 +40,7 @@ void *LinkedListPop(LinkedList **listptr){
     *listptr=list->next;
     //frees the head of the list
     free(list); 
+    list = NULL;
     return val;
 }
 
