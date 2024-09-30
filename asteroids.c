@@ -25,41 +25,34 @@ double toRadians(int deg){
     return (double)(deg) * (M_PI/180.0);
 }
 
+void checkXYInBoundary(int *x, int *y){
+    if(*y < 0){
+       *y = 0;
+    }
+    if(*y >= WINDOW_HEIGHT/25){
+        *y = (WINDOW_HEIGHT/25)-1;
+    }
+
+    if(*x < 0){
+        *x = 0;
+    }
+    if(*x >= WINDOW_WIDTH/25){
+        *x = (WINDOW_WIDTH/25)-1;
+    }  
+}
+
 void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], Object *object, int oldX, int oldY, int newX, int newY){  
     //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-    if(oldY < 0){
-       oldY = 0;
-    }
-    if(oldY >= WINDOW_HEIGHT/25){
-        oldY = (WINDOW_HEIGHT/25)-1;
-    }
+    checkXYInBoundary(&oldX, &oldY);
+    checkXYInBoundary(&newX, &newY);
 
-    if(oldX < 0){
-        oldX = 0;
-    }
-    if(oldX >= WINDOW_WIDTH/25){
-        oldX = (WINDOW_WIDTH/25)-1;
-    }  
-    if(newY < 0){
-       newY = 0;
-    }
-    if(newY >= WINDOW_HEIGHT/25){
-        newY = (WINDOW_HEIGHT/25)-1;
-    }
-
-    if(newX < 0){
-        newX = 0;
-    }
-    if(newX >= WINDOW_WIDTH/25){
-        newX = (WINDOW_WIDTH/25)-1;
-    } 
     //checks if the object changed it's spot in the grid since the last movement
     if(newX != oldX || newY != oldY){
         //add the object to it's new location
         boundaries[newX][newY].objs = LinkedListAdd(boundaries[newX][newY].objs, object);
-        if(strcmp(object->type, "asteroid") != 0){
-            printf("%s\n", object->type);
-        }
+        // if(strcmp(object->type, "asteroid") != 0){
+        //     printf("%s\n", object->type);
+        // }
         
         // printf("row new %d\n", newX);
         // printf("col new %d\n", newY);
@@ -72,31 +65,16 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
         }
 
         while(temp != NULL){
-            //TODO fix this it overwrites memory
             if(strcmp(((Object*)temp->value)->type, object->type) == 0 && ((Object*)temp->value)->id == object->id){
-                //if last is null then that means the ship is the head of the list of attached objects and can be removed, otherwise the list needs to be joined in the middle
-                // if(last == NULL){
-                //     LinkedListPop(&temp);
-                //     if(temp == NULL){
-                //         boundaries[oldX][oldY].objs = createLinkedList();
-                //     }
-                //     break;
-                // }else{
-                //     last->next = temp->next;
-                //     temp->value = NULL;
-                //     free(temp);
-                //     break;
-                // }
                 //connect the list before and after the current object
                 LinkedList *rest = temp->next;
-                temp->next = NULL;
-                temp->value = NULL;
+                //free the old location of the crrent object
                 free(temp);
                 temp = NULL;
+                //if there's previous nodes connect them to the nodes after the object being removed, otherwise make the following nodes the list, if both are empty create a new list on the location
                 if(last != NULL && last->value != NULL){
                     last->next = rest;
-                }
-                if(last == NULL){
+                }else{
                     if(rest != NULL){
                         boundaries[oldX][oldY].objs = rest;
                     }else{
@@ -106,9 +84,8 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
                 }
                 break;
 
-                printf("%s\n", "same");
+                //printf("%s\n", "same");
             }
-            //printf("%s\n", ((Object*)temp->value)->type);
             last = temp;
             temp = temp->next;
         }
@@ -150,14 +127,13 @@ void shotCheck(Laser *laser, SDL_Objs *obj){
     laser->cnt = laser->cnt - 1;
 }
 
-//void spawnAsteroid(int* cnt, LinkedList **list, LinkedList **objList, int *id){
 void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
     if(rand() <= 326 && *cnt < 10){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
-        rect->x = (WINDOW_WIDTH - 25) / 2;//rand() % WINDOW_WIDTH;
-        rect->y = (WINDOW_HEIGHT - 25) / 2;//rand() % WINDOW_HEIGHT;
+        rect->x = rand() % WINDOW_WIDTH;//(WINDOW_WIDTH - 25) / 2;
+        rect->y = rand() % WINDOW_HEIGHT;//(WINDOW_HEIGHT - 25) / 2;
         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
         int astSprite = (rand() % 9) + 1;
 
@@ -217,6 +193,50 @@ void displayAsteroids(LinkedList *list, SDL_Objs *obj, Boundary boundaries[WINDO
             list = list->next;
         }
     }
+}
+
+bool checkBounds(int x, int y, int oX, int oY, int w, int h){
+    if(x >= oX && x <= oX+w){
+        if(y >= oY && y <= oY + h){
+            return true;
+        }
+    }
+    return false;
+}
+
+//TODO move collision to center of ship or add bounding box
+bool detectAsteroidCollision(int x, int y, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
+    int xPos = x;
+    int yPos = y;
+    x /= 25;
+    y /= 25;
+    checkXYInBoundary(&x, &y);
+    for(int i = 0; i < 3; i++){
+        int tempY = (y - 1 + i);
+        tempY = (tempY > 0) ? tempY : 0;
+        tempY %= ((WINDOW_HEIGHT/25));
+        for(int j = 0; j < 3; j++){
+            int tempX = (x - 1 + j);
+            tempX = (tempX > 0) ? tempX : 0;
+            if(tempX >= 33){
+                printf("");
+                tempX = tempX;
+                int u = 7;
+                u+= 9;
+            }
+            tempX %= ((WINDOW_WIDTH/25));
+            LinkedList *list = boundaries[tempX][tempY].objs;
+            while(list != NULL && ((Object*)list->value) != NULL){
+                Object *ob = ((Object*)list->value);
+                if(strcmp(ob->type, "asteroid") == 0){
+                    SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
+                    return checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h);
+                }
+                list = list->next;
+            }
+        }
+    }
+    return false;
 }
 
 int main(int argc, char *argv[])
@@ -535,13 +555,16 @@ int main(int argc, char *argv[])
 
         //checks if the ship changed it's spot in the grid since the last movement
         setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
+        if(detectAsteroidCollision(ship.x, ship.y, boundaries)){
+            printf("%s\n", "asteroid hit");
+        }
 
         if(keystates[SDL_SCANCODE_SPACE] && addShot){
             //for(int i = 0; i < 5; i++){
             addShot = false;
             addShotCounter = 0;
 
-            printf("shot\n");
+            //printf("shot\n");
             //creates shot on top of ship
             SDL_Rect *shot = (SDL_Rect*)malloc(sizeof(SDL_Rect));
             createShot(shot, &ship, &ship_val);
