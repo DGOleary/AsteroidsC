@@ -13,6 +13,7 @@
 
 typedef struct{
     Sprite_Values *spv;
+    Object *obj;
     int cnt;
 } Laser;
 
@@ -91,6 +92,44 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
         }
     }
 }
+
+bool checkBounds(int x, int y, int oX, int oY, int w, int h){
+    if(x >= oX && x <= oX+w){
+        if(y >= oY && y <= oY + h){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
+    int xPos = x+13;
+    int yPos = y+13;
+    x /= 25;
+    y /= 25;
+    checkXYInBoundary(&x, &y);
+    for(int i = 0; i < 3; i++){
+        int tempY = (y - 1 + i);
+        tempY = (tempY > 0) ? tempY : 0;
+        tempY %= ((WINDOW_HEIGHT/25));
+        for(int j = 0; j < 3; j++){
+            int tempX = (x - 1 + j);
+            tempX = (tempX > 0) ? tempX : 0;
+            tempX %= ((WINDOW_WIDTH/25));
+            LinkedList *list = boundaries[tempX][tempY].objs;
+            while(list != NULL && ((Object*)list->value) != NULL){
+                Object *ob = ((Object*)list->value);
+                if(strcmp(ob->type, type) == 0){
+                    SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
+                    return checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h);
+                }
+                list = list->next;
+            }
+        }
+    }
+    return false;
+}
+
 //function that creates a laser bolt
 void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
     double rad = toRadians(ship_val->dir+90);
@@ -102,8 +141,10 @@ void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
     shot->h = 25;
 }
 
-void shotCheck(Laser *laser, SDL_Objs *obj){
+void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
     Sprite_Values *temp = laser->spv; 
+    int oldX = temp->loc->x;
+    int oldY = temp->loc->y;
     double rad = toRadians(temp->dir+90);
     temp->loc->x -= (int)(20*(cos(rad)-.0001));
     temp->loc->y -= (int)(20*(sin(rad)-.0001));
@@ -123,6 +164,8 @@ void shotCheck(Laser *laser, SDL_Objs *obj){
     if(temp->loc->y < -25){
         temp->loc->y = WINDOW_HEIGHT;
     }
+    
+    setObjectInBoundary(boundaries, laser->obj, oldX, oldY, temp->loc->x / 25, temp->loc->y / 25);
     animateStill(obj, temp);
     laser->cnt = laser->cnt - 1;
 }
@@ -193,50 +236,6 @@ void displayAsteroids(LinkedList *list, SDL_Objs *obj, Boundary boundaries[WINDO
             list = list->next;
         }
     }
-}
-
-bool checkBounds(int x, int y, int oX, int oY, int w, int h){
-    if(x >= oX && x <= oX+w){
-        if(y >= oY && y <= oY + h){
-            return true;
-        }
-    }
-    return false;
-}
-
-//TODO move collision to center of ship or add bounding box
-bool detectAsteroidCollision(int x, int y, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    int xPos = x;
-    int yPos = y;
-    x /= 25;
-    y /= 25;
-    checkXYInBoundary(&x, &y);
-    for(int i = 0; i < 3; i++){
-        int tempY = (y - 1 + i);
-        tempY = (tempY > 0) ? tempY : 0;
-        tempY %= ((WINDOW_HEIGHT/25));
-        for(int j = 0; j < 3; j++){
-            int tempX = (x - 1 + j);
-            tempX = (tempX > 0) ? tempX : 0;
-            if(tempX >= 33){
-                printf("");
-                tempX = tempX;
-                int u = 7;
-                u+= 9;
-            }
-            tempX %= ((WINDOW_WIDTH/25));
-            LinkedList *list = boundaries[tempX][tempY].objs;
-            while(list != NULL && ((Object*)list->value) != NULL){
-                Object *ob = ((Object*)list->value);
-                if(strcmp(ob->type, "asteroid") == 0){
-                    SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
-                    return checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h);
-                }
-                list = list->next;
-            }
-        }
-    }
-    return false;
 }
 
 int main(int argc, char *argv[])
@@ -360,6 +359,7 @@ int main(int argc, char *argv[])
     
     //Queue that has blaster shots
     Queue *shots = createQueue();
+    int shotId = 0;
 
     //linked list holding asteroids
     LinkedList *asteroids = createLinkedList();
@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
 
         //checks if the ship changed it's spot in the grid since the last movement
         setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
-        if(detectAsteroidCollision(ship.x, ship.y, boundaries)){
+        if(detectCollision(ship.x, ship.y, "asteroid", boundaries)){
             printf("%s\n", "asteroid hit");
         }
 
@@ -591,10 +591,20 @@ int main(int argc, char *argv[])
             temp->frame_offsets[0][1] = 25;
 
             Laser *hold = (Laser*)malloc(sizeof(Laser));
+            Object *ob = createObject("laser", shotId, temp);
+            shotId++;
             hold->spv = temp;
+            hold->obj = ob;
             hold->cnt = 50;//- (i*5);
 
             QueueAdd(shots, hold);
+            int x = shot->x;
+            int y = shot->y;
+            checkXYInBoundary(&x, &y);
+            boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
+            if(detectCollision(shot->x, shot->y, "asteroid", boundaries)){
+                printf("%s\n", "laser shot");
+            }
         }
             //create an object for shot collisions 
             // Object *shotTemp = createObject("shot", shotsCounter++, temp);
@@ -613,10 +623,14 @@ int main(int argc, char *argv[])
 
         if(shots->value != NULL){
             Queue *temp = shots;
-
+            Queue *prev = shots;
             while(temp != NULL){
                 Laser *shot_laser = (Laser*)temp->value;
-                shotCheck(shot_laser, &obj);
+                //TODO remove lasers that hit from the game
+                if(detectCollision(shot_laser->spv->loc->x, shot_laser->spv->loc->y, "asteroid", boundaries)){
+                    printf("%s\n", "laser");
+                }
+                shotCheck(shot_laser, &obj, boundaries);
                 //checks if the counter has ran out for this laser bolt
                 if(shot_laser->cnt == 0){              
                     //frees the value before temp becomes null if it is the end
@@ -630,6 +644,7 @@ int main(int argc, char *argv[])
                     }
                     temp = NULL;
                 }else{
+                    prev = temp;
                     temp = temp->next;
                 }
             }
