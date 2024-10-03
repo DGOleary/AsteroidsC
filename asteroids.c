@@ -102,7 +102,7 @@ bool checkBounds(int x, int y, int oX, int oY, int w, int h){
     return false;
 }
 
-bool detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
+Object* detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], bool remove){
     int xPos = x+13;
     int yPos = y+13;
     x /= 25;
@@ -117,17 +117,34 @@ bool detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WIDTH/
             tempX = (tempX > 0) ? tempX : 0;
             tempX %= ((WINDOW_WIDTH/25));
             LinkedList *list = boundaries[tempX][tempY].objs;
+            LinkedList *last = NULL;
             while(list != NULL && ((Object*)list->value) != NULL){
                 Object *ob = ((Object*)list->value);
                 if(strcmp(ob->type, type) == 0){
-                    SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
-                    return checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h);
+                        SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
+                        if(checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h)){
+                        if(remove){
+                            LinkedList *rest = list->next;
+                            if(last != NULL && last->value != NULL){
+                                last->next = rest;
+                            }else{
+                                if(rest != NULL){
+                                    boundaries[tempX][tempY].objs = rest;
+                                }else{
+                                    boundaries[tempX][tempY].objs = createLinkedList();
+                             }
+                            
+                            }
+                        }
+                        return ob;
+                    }
                 }
+                last = list;
                 list = list->next;
             }
         }
     }
-    return false;
+    return NULL;
 }
 
 //function that creates a laser bolt
@@ -555,7 +572,7 @@ int main(int argc, char *argv[])
 
         //checks if the ship changed it's spot in the grid since the last movement
         setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
-        if(detectCollision(ship.x, ship.y, "asteroid", boundaries)){
+        if(detectCollision(ship.x, ship.y, "asteroid", boundaries, false) != NULL){
             printf("%s\n", "asteroid hit");
         }
 
@@ -602,9 +619,11 @@ int main(int argc, char *argv[])
             int y = shot->y;
             checkXYInBoundary(&x, &y);
             boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
-            if(detectCollision(shot->x, shot->y, "asteroid", boundaries)){
-                printf("%s\n", "laser shot");
-            }
+            //checks if the asteroid is hit in the initial spawn
+            //TODO add asteroid removal code
+            // if(detectCollision(shot->x, shot->y, "asteroid", boundaries, false) != NULL){
+            //     printf("%s\n", "laser shot");
+            // }
         }
             //create an object for shot collisions 
             // Object *shotTemp = createObject("shot", shotsCounter++, temp);
@@ -627,8 +646,35 @@ int main(int argc, char *argv[])
             while(temp != NULL){
                 Laser *shot_laser = (Laser*)temp->value;
                 //TODO remove lasers that hit from the game
-                if(detectCollision(shot_laser->spv->loc->x, shot_laser->spv->loc->y, "asteroid", boundaries)){
+                Object *hit = detectCollision(shot_laser->spv->loc->x, shot_laser->spv->loc->y, "asteroid", boundaries, true);
+                if(hit != NULL){
                     printf("%s\n", "laser");
+                    LinkedList *tempList = asteroids;
+                    LinkedList *last = NULL;
+                    while(tempList != NULL){
+                        Asteroid *as = (Asteroid*)tempList->value;
+                        if(as->obj == hit){
+                            LinkedList *rest = tempList->next;
+                            if(last != NULL && last->value != NULL){
+                                last->next = tempList->next;
+                            }else{
+                                if(rest != NULL){
+                                    asteroids = rest;
+                                }else{
+                                    asteroids = createLinkedList();
+                             }
+                            }
+                            free(tempList);
+                            free(hit->type);
+                            free(hit);
+                            freeSpriteValues(as->spv);
+                            free(as);
+                            asteroidCount--;
+                            break;
+                        }
+                        last = tempList;
+                        tempList = tempList->next;
+                    }
                 }
                 shotCheck(shot_laser, &obj, boundaries);
                 //checks if the counter has ran out for this laser bolt
