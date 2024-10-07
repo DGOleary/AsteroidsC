@@ -187,13 +187,23 @@ void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25]
     laser->cnt = laser->cnt - 1;
 }
 
-void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    if(rand() <= 326 && *cnt < 10){ 
+//TODO adjust spawn rates based on amount of asteroids
+void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int shipX, int shipY, int *spawnX, int *spawnY){
+    if((rand() <= 326 && *cnt < 10) || ((spawnX != NULL && spawnY != NULL))){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
         rect->x = rand() % WINDOW_WIDTH;//(WINDOW_WIDTH - 25) / 2;
         rect->y = rand() % WINDOW_HEIGHT;//(WINDOW_HEIGHT - 25) / 2;
+        if(spawnX != NULL && spawnY != NULL){
+            rect->x = *spawnX;
+            rect->y = *spawnY;
+        }
+        //make sure the asteroid doesn't spawn on or very near to the ship
+        if(abs(rect->x - shipX) <= 75 && abs(rect->y - shipY) <= 75){
+            spawnAsteroid(cnt, id, list, boundaries, shipX, shipY, spawnX, spawnY);
+            return;
+        }
         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
         int astSprite = (rand() % 9) + 1;
 
@@ -411,54 +421,6 @@ int main(int argc, char *argv[])
             case SDL_QUIT:
                 close_requested = true;
                 break;
-            // case SDL_KEYDOWN:
-            //     switch (event.key.keysym.scancode)
-            //     {
-            //     case SDL_SCANCODE_W:
-            //     case SDL_SCANCODE_UP:
-            //         up = 1;
-            //         down = left = right = 0;
-            //         break;
-            //     case SDL_SCANCODE_S:
-            //     case SDL_SCANCODE_DOWN:
-            //         down = 1;
-            //         up = left = right = 0;
-            //         break;
-            //     case SDL_SCANCODE_A:
-            //     case SDL_SCANCODE_LEFT:
-            //         left = 1;
-            //         down = up = right = 0;
-            //         ship_val.dir -= 5;
-            //         break;
-            //     case SDL_SCANCODE_D:
-            //     case SDL_SCANCODE_RIGHT:
-            //         right = 1;
-            //         down = left = up = 0;
-            //         ship_val.dir += 5;
-            //         break;
-            //     }
-            //     break;
-            // case SDL_KEYUP:
-            //     switch (event.key.keysym.scancode)
-            //     {
-            //     case SDL_SCANCODE_W:
-            //     case SDL_SCANCODE_UP:
-            //         up = 0;
-            //         break;
-            //     case SDL_SCANCODE_S:
-            //     case SDL_SCANCODE_DOWN:
-            //         down = 0;
-            //         break;
-            //     case SDL_SCANCODE_A:
-            //     case SDL_SCANCODE_LEFT:
-            //         left = 0;
-            //         break;
-            //     case SDL_SCANCODE_D:
-            //     case SDL_SCANCODE_RIGHT:
-            //         right = 0;
-            //         break;
-            //     }
-                break;
             }
         }
 
@@ -502,20 +464,7 @@ int main(int argc, char *argv[])
         //save the old boundary box the ship inhabited
         int oldX = ship.x / 25;
         int oldY = ship.y / 25;
-        //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-        // if(oldY < 0){
-        //     oldY = 0;
-        // }
-        // if(oldY >= WINDOW_HEIGHT/25){
-        //     oldY = (WINDOW_HEIGHT/25)-1;
-        // }
 
-        // if(oldX < 0){
-        //     oldX = 0;
-        // }
-        // if(oldX >= WINDOW_WIDTH/25){
-        //     oldX = (WINDOW_WIDTH/25)-1;
-        // }
         //this code controls where the ship ends up getting put after calculating the speed/acceleration
         double rad = toRadians(ship_val.dir+90);
         //seperates the vector to find the x and y position, due to rounding/float issues the number is truncated
@@ -549,26 +498,6 @@ int main(int argc, char *argv[])
 
         int shipY = ship.y / 25;
         int shipX = ship.x / 25;
-        //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-        // if(shipY < 0){
-        //     shipY = 0;
-        // }
-        // if(shipY >= WINDOW_HEIGHT/25){
-        //     shipY = (WINDOW_HEIGHT/25)-1;
-        // }
-
-        // if(shipX < 0){
-        //     shipX = 0;
-        // }
-        // if(shipX >= WINDOW_WIDTH/25){
-        //     shipX = (WINDOW_WIDTH/25)-1;
-        // }
-        
-        // if(shipX < 0 || shipX >= WINDOW_HEIGHT/25 || shipY < 0 || shipY >= WINDOW_WIDTH/25){
-        //     printf("row err %d\n", shipX);
-        //     printf("col err %d\n", shipY);
-        //     printf("\n");
-        // }
 
         //checks if the ship changed it's spot in the grid since the last movement
         setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
@@ -625,17 +554,8 @@ int main(int argc, char *argv[])
             //     printf("%s\n", "laser shot");
             // }
         }
-            //create an object for shot collisions 
-            // Object *shotTemp = createObject("shot", shotsCounter++, temp);
-            // QueueAdd(shotsObjs, shotTemp);
-            // free(shotTemp->type);
-            // int *shotTimer = (int*)malloc(sizeof(int));
-            // *shotTimer = 50;
-            // QueueAdd(shotsTimer, shotTimer);
-            // LinkedList *tempList = LinkedListAdd(shots, shot);
-            // shots = tempList;
-        //}
-        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries);
+
+        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, NULL, NULL);
 
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
@@ -651,9 +571,13 @@ int main(int argc, char *argv[])
                     printf("%s\n", "laser");
                     LinkedList *tempList = asteroids;
                     LinkedList *last = NULL;
+                    int spawnX = 0;
+                    int spawnY = 0;
                     while(tempList != NULL){
                         Asteroid *as = (Asteroid*)tempList->value;
                         if(as->obj == hit){
+                            spawnX = as->spv->loc->x;
+                            spawnY = as->spv->loc->y;
                             LinkedList *rest = tempList->next;
                             if(last != NULL && last->value != NULL){
                                 last->next = tempList->next;
@@ -670,6 +594,9 @@ int main(int argc, char *argv[])
                             freeSpriteValues(as->spv);
                             free(as);
                             asteroidCount--;
+                            //remove laser when it hits an asteroid before enabling
+                            //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY);
+                            //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY);
                             break;
                         }
                         last = tempList;
