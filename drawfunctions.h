@@ -61,11 +61,13 @@ typedef struct {
 
 //struct that acts as a wrapper so objects can be of the same type
 typedef struct {
-    //identifiers to give a spefific type and and id in that type
+    //identifiers to give a specific type and and id in that type
     char *type;
     int id;
     //whatever it points to
     void *obj;
+    //the boundary list the object resides in
+    LinkedList *boundary_list;
 } Object;
 
 

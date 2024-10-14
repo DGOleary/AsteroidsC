@@ -15,6 +15,7 @@ typedef struct{
     Sprite_Values *spv;
     Object *obj;
     int cnt;
+    LinkedList *boundaryList;
 } Laser;
 
 typedef struct{
@@ -42,42 +43,7 @@ void checkXYInBoundary(int *x, int *y){
     }  
 }
 
-void removeObjectFromBoundaries(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int x, int y, Object *object){
-    LinkedList *last = NULL;
-    LinkedList *temp = boundaries[x][y].objs;
-
-    if(temp == NULL || temp->value == NULL){
-        temp = NULL;
-    }
-
-    while(temp != NULL){
-        if(strcmp(((Object*)temp->value)->type, object->type) == 0 && ((Object*)temp->value)->id == object->id){
-            //connect the list before and after the current object
-            LinkedList *rest = temp->next;
-            //free the old location of the crrent object
-            free(temp);
-            temp = NULL;
-            //if there's previous nodes connect them to the nodes after the object being removed, otherwise make the following nodes the list, if both are empty create a new list on the location
-            if(last != NULL && last->value != NULL){
-                last->next = rest;
-            }else{
-                if(rest != NULL){
-                    boundaries[x][y].objs = rest;
-                }else{
-                    boundaries[x][y].objs = createLinkedList();
-                }
-                
-            }
-            break;
-
-            //printf("%s\n", "same");
-        }
-        last = temp;
-        temp = temp->next;
-    }
-}
-
-void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], Object *object, int oldX, int oldY, int newX, int newY){  
+LinkedList* setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], Object *object, int oldX, int oldY, int newX, int newY){  
     //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
     checkXYInBoundary(&oldX, &oldY);
     checkXYInBoundary(&newX, &newY);
@@ -86,7 +52,6 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
     if(newX != oldX || newY != oldY){
         //add the object to it's new location
         boundaries[newX][newY].objs = LinkedListAdd(boundaries[newX][newY].objs, object);
-        object->boundary_list = boundaries[newX][newY].objs;
         // if(strcmp(object->type, "asteroid") != 0){
         //     printf("%s\n", object->type);
         // }
@@ -94,39 +59,40 @@ void setObjectInBoundary(Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25],
         // printf("row new %d\n", newX);
         // printf("col new %d\n", newY);
         // printf("\n");
+        LinkedList *last = NULL;
+        LinkedList *temp = boundaries[oldX][oldY].objs;
 
-        // LinkedList *last = NULL;
-        // LinkedList *temp = boundaries[oldX][oldY].objs;
+        if(temp == NULL || temp->value == NULL){
+            temp = NULL;
+        }
 
-        // if(temp == NULL || temp->value == NULL){
-        //     temp = NULL;
-        // }
-        removeObjectFromBoundaries(boundaries, oldX, oldY, object);
-        // while(temp != NULL){
-        //     if(strcmp(((Object*)temp->value)->type, object->type) == 0 && ((Object*)temp->value)->id == object->id){
-        //         //connect the list before and after the current object
-        //         LinkedList *rest = temp->next;
-        //         //free the old location of the crrent object
-        //         free(temp);
-        //         temp = NULL;
-        //         //if there's previous nodes connect them to the nodes after the object being removed, otherwise make the following nodes the list, if both are empty create a new list on the location
-        //         if(last != NULL && last->value != NULL){
-        //             last->next = rest;
-        //         }else{
-        //             if(rest != NULL){
-        //                 boundaries[oldX][oldY].objs = rest;
-        //             }else{
-        //                 boundaries[oldX][oldY].objs = createLinkedList();
-        //             }
+        while(temp != NULL){
+            if(strcmp(((Object*)temp->value)->type, object->type) == 0 && ((Object*)temp->value)->id == object->id){
+                //connect the list before and after the current object
+                LinkedList *rest = temp->next;
+                //free the old location of the crrent object
+                free(temp);
+                temp = NULL;
+                //if there's previous nodes connect them to the nodes after the object being removed, otherwise make the following nodes the list, if both are empty create a new list on the location
+                if(last != NULL && last->value != NULL){
+                    last->next = rest;
+                }else{
+                    if(rest != NULL){
+                        boundaries[oldX][oldY].objs = rest;
+                    }else{
+                        boundaries[oldX][oldY].objs = createLinkedList();
+                    }
                     
-        //         }
-        //         break;
+                }
+                break;
 
-        //         //printf("%s\n", "same");
-        //     }
-        //     last = temp;
-        //     temp = temp->next;
-        // }
+                //printf("%s\n", "same");
+            }
+            last = temp;
+            temp = temp->next;
+        }
+
+        return boundaries[newX][newY].objs;
     }
 }
 
@@ -139,7 +105,6 @@ bool checkBounds(int x, int y, int oX, int oY, int w, int h){
     return false;
 }
 
-//remove being true removes the detected object from it's spot in the boundaries
 Object* detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], bool remove){
     int xPos = x+13;
     int yPos = y+13;
@@ -169,9 +134,9 @@ Object* detectCollision(int x, int y, char *type, Boundary boundaries[WINDOW_WID
                                 if(rest != NULL){
                                     boundaries[tempX][tempY].objs = rest;
                                 }else{
+                                    boundaries[tempX][tempY].objs->value = NULL;
                                     boundaries[tempX][tempY].objs->length = 0;
                                     boundaries[tempX][tempY].objs->next = NULL;
-                                    boundaries[tempX][tempY].objs->value = NULL;
                              }
                             
                             }
@@ -200,8 +165,8 @@ void createShot(SDL_Rect *shot, SDL_Rect *ship, Sprite_Values *ship_val){
 
 void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
     Sprite_Values *temp = laser->spv; 
-    int oldX = temp->loc->x/25;
-    int oldY = temp->loc->y/25;
+    int oldX = temp->loc->x;
+    int oldY = temp->loc->y;
     double rad = toRadians(temp->dir+90);
     temp->loc->x -= (int)(20*(cos(rad)-.0001));
     temp->loc->y -= (int)(20*(sin(rad)-.0001));
@@ -222,18 +187,28 @@ void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25]
         temp->loc->y = WINDOW_HEIGHT;
     }
     
-    setObjectInBoundary(boundaries, laser->obj, oldX, oldY, temp->loc->x / 25, temp->loc->y / 25);
+    laser->boundaryList = setObjectInBoundary(boundaries, laser->obj, oldX, oldY, temp->loc->x / 25, temp->loc->y / 25);
     animateStill(obj, temp);
     laser->cnt = laser->cnt - 1;
 }
 
-void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    if(rand() <= 326 && *cnt < 10){ 
+//TODO adjust spawn rates based on amount of asteroids
+void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int shipX, int shipY, int *spawnX, int *spawnY){
+    if((rand() <= 326 && *cnt < 10) || ((spawnX != NULL && spawnY != NULL))){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
         rect->x = rand() % WINDOW_WIDTH;//(WINDOW_WIDTH - 25) / 2;
         rect->y = rand() % WINDOW_HEIGHT;//(WINDOW_HEIGHT - 25) / 2;
+        if(spawnX != NULL && spawnY != NULL){
+            rect->x = *spawnX;
+            rect->y = *spawnY;
+        }
+        //make sure the asteroid doesn't spawn on or very near to the ship
+        if(abs(rect->x - shipX) <= 75 && abs(rect->y - shipY) <= 75){
+            spawnAsteroid(cnt, id, list, boundaries, shipX, shipY, spawnX, spawnY);
+            return;
+        }
         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
         int astSprite = (rand() % 9) + 1;
 
@@ -248,7 +223,6 @@ void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WIN
         int y = rect->y / 25;
 
         boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
-        ob->boundary_list = boundaries[x][y].objs;
 
         *list = LinkedListAdd(*list, as);
         *id = *id+1;
@@ -441,7 +415,6 @@ int main(int argc, char *argv[])
 
     //register the ship's inititial position
     boundaries[ship.x / 25][ship.y / 25].objs = LinkedListAdd(boundaries[ship.x / 25][ship.y / 25].objs, &shipObject);
-    shipObject.boundary_list = boundaries[ship.x / 25][ship.y / 25].objs;
 
     while (!close_requested)
     {
@@ -452,54 +425,6 @@ int main(int argc, char *argv[])
             {
             case SDL_QUIT:
                 close_requested = true;
-                break;
-            // case SDL_KEYDOWN:
-            //     switch (event.key.keysym.scancode)
-            //     {
-            //     case SDL_SCANCODE_W:
-            //     case SDL_SCANCODE_UP:
-            //         up = 1;
-            //         down = left = right = 0;
-            //         break;
-            //     case SDL_SCANCODE_S:
-            //     case SDL_SCANCODE_DOWN:
-            //         down = 1;
-            //         up = left = right = 0;
-            //         break;
-            //     case SDL_SCANCODE_A:
-            //     case SDL_SCANCODE_LEFT:
-            //         left = 1;
-            //         down = up = right = 0;
-            //         ship_val.dir -= 5;
-            //         break;
-            //     case SDL_SCANCODE_D:
-            //     case SDL_SCANCODE_RIGHT:
-            //         right = 1;
-            //         down = left = up = 0;
-            //         ship_val.dir += 5;
-            //         break;
-            //     }
-            //     break;
-            // case SDL_KEYUP:
-            //     switch (event.key.keysym.scancode)
-            //     {
-            //     case SDL_SCANCODE_W:
-            //     case SDL_SCANCODE_UP:
-            //         up = 0;
-            //         break;
-            //     case SDL_SCANCODE_S:
-            //     case SDL_SCANCODE_DOWN:
-            //         down = 0;
-            //         break;
-            //     case SDL_SCANCODE_A:
-            //     case SDL_SCANCODE_LEFT:
-            //         left = 0;
-            //         break;
-            //     case SDL_SCANCODE_D:
-            //     case SDL_SCANCODE_RIGHT:
-            //         right = 0;
-            //         break;
-            //     }
                 break;
             }
         }
@@ -544,20 +469,7 @@ int main(int argc, char *argv[])
         //save the old boundary box the ship inhabited
         int oldX = ship.x / 25;
         int oldY = ship.y / 25;
-        //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-        // if(oldY < 0){
-        //     oldY = 0;
-        // }
-        // if(oldY >= WINDOW_HEIGHT/25){
-        //     oldY = (WINDOW_HEIGHT/25)-1;
-        // }
 
-        // if(oldX < 0){
-        //     oldX = 0;
-        // }
-        // if(oldX >= WINDOW_WIDTH/25){
-        //     oldX = (WINDOW_WIDTH/25)-1;
-        // }
         //this code controls where the ship ends up getting put after calculating the speed/acceleration
         double rad = toRadians(ship_val.dir+90);
         //seperates the vector to find the x and y position, due to rounding/float issues the number is truncated
@@ -591,26 +503,6 @@ int main(int argc, char *argv[])
 
         int shipY = ship.y / 25;
         int shipX = ship.x / 25;
-        //checks boundaries, if it's out of bounds the boundary extends to the last onscreen box
-        // if(shipY < 0){
-        //     shipY = 0;
-        // }
-        // if(shipY >= WINDOW_HEIGHT/25){
-        //     shipY = (WINDOW_HEIGHT/25)-1;
-        // }
-
-        // if(shipX < 0){
-        //     shipX = 0;
-        // }
-        // if(shipX >= WINDOW_WIDTH/25){
-        //     shipX = (WINDOW_WIDTH/25)-1;
-        // }
-        
-        // if(shipX < 0 || shipX >= WINDOW_HEIGHT/25 || shipY < 0 || shipY >= WINDOW_WIDTH/25){
-        //     printf("row err %d\n", shipX);
-        //     printf("col err %d\n", shipY);
-        //     printf("\n");
-        // }
 
         //checks if the ship changed it's spot in the grid since the last movement
         setObjectInBoundary(boundaries, &shipObject, oldX, oldY, shipX, shipY);
@@ -657,28 +549,19 @@ int main(int argc, char *argv[])
             hold->cnt = 50;//- (i*5);
 
             QueueAdd(shots, hold);
-            int x = shot->x/25;
-            int y = shot->y/25;
+            int x = shot->x;
+            int y = shot->y;
             checkXYInBoundary(&x, &y);
             boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
-            ob->boundary_list = boundaries[x][y].objs;
+            hold->boundaryList = boundaries[x][y].objs;
             //checks if the asteroid is hit in the initial spawn
             //TODO add asteroid removal code
             // if(detectCollision(shot->x, shot->y, "asteroid", boundaries, false) != NULL){
             //     printf("%s\n", "laser shot");
             // }
         }
-            //create an object for shot collisions 
-            // Object *shotTemp = createObject("shot", shotsCounter++, temp);
-            // QueueAdd(shotsObjs, shotTemp);
-            // free(shotTemp->type);
-            // int *shotTimer = (int*)malloc(sizeof(int));
-            // *shotTimer = 50;
-            // QueueAdd(shotsTimer, shotTimer);
-            // LinkedList *tempList = LinkedListAdd(shots, shot);
-            // shots = tempList;
-        //}
-        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries);
+
+        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, NULL, NULL);
 
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
@@ -694,9 +577,14 @@ int main(int argc, char *argv[])
                     printf("%s\n", "laser");
                     LinkedList *tempList = asteroids;
                     LinkedList *last = NULL;
+                    int spawnX = 0;
+                    int spawnY = 0;
+                    bool skip = false;
                     while(tempList != NULL){
                         Asteroid *as = (Asteroid*)tempList->value;
                         if(as->obj == hit){
+                            spawnX = as->spv->loc->x;
+                            spawnY = as->spv->loc->y;
                             LinkedList *rest = tempList->next;
                             if(last != NULL && last->value != NULL){
                                 last->next = tempList->next;
@@ -704,73 +592,82 @@ int main(int argc, char *argv[])
                                 if(rest != NULL){
                                     asteroids = rest;
                                 }else{
-                                    asteroids->length = 0;
-                                    asteroids->next = NULL;
-                                    asteroids->value = NULL;
+                                    asteroids = createLinkedList();
                              }
                             }
-                            if(tempList != asteroids){
-                                free(tempList);
-                            }
+                            free(tempList);
                             free(hit->type);
                             free(hit);
                             freeSpriteValues(as->spv);
                             free(as);
                             asteroidCount--;
-                            break;
-                        }
-                        last = tempList;
-                        tempList = tempList->next;
-                    }
 
-                    int shotX = shot_laser->spv->loc->x/25;
-                    int shotY = shot_laser->spv->loc->y/25;
-                    checkXYInBoundary(&shotX, &shotY);
-                    removeObjectFromBoundaries(boundaries, shotX, shotY, shot_laser->obj);
-                    //TODO change so it goes with every check not going through it all the every time
-                   // Queue *lasers = shots;
-                   // Queue *lasers_prev = NULL;
-                    //TODO remove and remove from boundaries
-                  //  while(lasers != NULL){
-                        if(temp->value == shot_laser){
-                            printf("laser value %d %d\n", temp->value, shot_laser);
-                            if(prev != NULL && prev->value != NULL){
-                                prev->next = temp->next;
-                            }else{
-                                addShot = true;
-                                addShotCounter = 0;
-                                if(temp->next != NULL){
-                                    shots = temp->next;
-                                }else{
-                                    shots->last = NULL;
-                                    shots->length = 0;
-                                    shots->next = NULL;
-                                    shots->value = NULL;
-                                }
-                            }
-                            freeSpriteValues(shot_laser->spv);
-                            free(shot_laser->obj->type);
-                            free(shot_laser->obj);
-                            free(shot_laser);
-                            //TODO memory glitch is caused by this object in the boundary not being deleted properly, check deletion code and check if when spawned it doesn't get removed
-                            shot_laser->obj->type = "pooop";
-                            Queue *next_item = temp->next;
-                            //checks if it's the head of the list, in that case do not free it
-                            if(shots->length != 0){
-                                free(temp);
-                            }
-                            temp = next_item;
-                            break;
+                            // //removes laser in boundaries
+                            // LinkedList *list_shot = shot_laser->boundaryList;
+                            // LinkedList *last_shotlist = NULL;
+                            // while(list_shot != NULL && ((Object*)list_shot->value) != NULL){
+                            //     Object *ob = ((Object*)list_shot->value);
+                            //     if(strcmp(ob->type, "laser") == 0 && ob->id == shot_laser->obj->id){
+                            //             //SDL_Rect *loc = ((Sprite_Values*)ob->obj)->loc;
+                            //             //if(checkBounds(xPos, yPos, loc->x, loc->y, loc->w, loc->h)){
+                            //             //if(remove){
+                            //                 LinkedList *rest_shot = list_shot->next;
+                            //                 if(last_shotlist != NULL && last_shotlist->value != NULL){
+                            //                     last_shotlist->next = rest_shot;
+                            //                 }else{
+                            //                     if(rest_shot != NULL){
+                            //                         *(shot_laser->boundaryList) = *rest_shot;
+                            //                     }else{
+                            //                         //printf("null boundary list in laser removal\n");
+                            //                         //exit(1);
+                            //                         shot_laser->boundaryList->length = 0;
+                            //                         shot_laser->boundaryList->next = NULL;
+                            //                         shot_laser->boundaryList->value = NULL;
+                            //                 }
+                                            
+                            //                 }
+                            //                 break;
+                            //             //}
+                            //         //}
+                            //     }
+                            //     last_shotlist = list_shot;
+                            //     list_shot = list_shot->next;
+                            // }
+
+                            // Queue *restQ = temp->next;
+                            // if(prev != NULL && prev->value != NULL){
+                            //     prev->next = restQ;
+                            // }else{
+                            //     if(restQ != NULL){
+                            //         shots = restQ;
+                            //     }else{
+                            //         shots = createQueue();
+                            //     }
+                            // }
+                            // Queue *saveTemp = temp;
+                            // freeSpriteValues(shot_laser->spv);
+                            // free(shot_laser->obj->type);
+                            // free(shot_laser->obj);
+                            // free(shot_laser);
+                            // free(saveTemp);
+                            // temp = restQ;
+                            // skip = true;
+                            // //remove laser when it hits an asteroid before enabling
+                            // //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY);
+                            // //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY);
+                            // break;
                         }
-                      //  lasers_prev = lasers;
-                      //  lasers = lasers->next;
-                   // }
+                        // last = tempList;
+                        // tempList = tempList->next;
+                    }
+                    // if(skip){
+                    //     continue;
+                    // }
                 }
                 shotCheck(shot_laser, &obj, boundaries);
                 //checks if the counter has ran out for this laser bolt
                 if(shot_laser->cnt == 0){              
                     //frees the value before temp becomes null if it is the end
-                    //removeObjectFromBoundaries(shot_laser->obj->boundary_list, shot_laser->obj);
                     Laser *del = (Laser*)QueuePoll(&shots);
                     freeSpriteValues(del->spv);
                     free(del->obj->type);
@@ -805,3 +702,4 @@ int main(int argc, char *argv[])
     SDL_DestroyWindow(window);
     SDL_Quit();
 }
+
