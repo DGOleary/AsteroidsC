@@ -20,6 +20,7 @@ typedef struct{
 typedef struct{
     Sprite_Values *spv;
     Object *obj;
+    //int size;
 } Asteroid;
 
 double toRadians(int deg){
@@ -227,13 +228,55 @@ void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25]
     laser->cnt = laser->cnt - 1;
 }
 
-void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    if(rand() <= 326 && *cnt < 10){ 
+// void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
+//     if(rand() <= 326 && *cnt < 10){ 
+//         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+//         rect->h = 50;
+//         rect->w = 50;
+//         rect->x = rand() % WINDOW_WIDTH;//(WINDOW_WIDTH - 25) / 2;
+//         rect->y = rand() % WINDOW_HEIGHT;//(WINDOW_HEIGHT - 25) / 2;
+//         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
+//         int astSprite = (rand() % 9) + 1;
+
+//         //create the array in dynamic memory
+//         sprt->frame_offsets[0][0] = 25 * astSprite;
+//         sprt->frame_offsets[0][1] = 0;
+//         Asteroid *as = (Asteroid*)malloc(sizeof(Asteroid));
+//         Object *ob = createObject("asteroid", *id, sprt);
+//         as->obj = ob;
+//         as->spv = sprt;
+//         int x = rect->x / 25;
+//         int y = rect->y / 25;
+
+//         boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
+//         ob->boundary_list = boundaries[x][y].objs;
+
+//         *list = LinkedListAdd(*list, as);
+//         *id = *id+1;
+//         *cnt = *cnt+1;
+//     }
+// }
+
+//TODO fix random size causing crashes
+void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int shipX, int shipY, int *spawnX, int *spawnY, int size){
+    //check if it's small enough to be destroyed completely
+    if((spawnX != NULL && spawnY != NULL) && size/2 == 0){
+        return;
+    }
+
+    if((rand() <= 326 && *cnt < 10) || (spawnX != NULL && spawnY != NULL)){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
-        rect->h = 50;
-        rect->w = 50;
         rect->x = rand() % WINDOW_WIDTH;//(WINDOW_WIDTH - 25) / 2;
         rect->y = rand() % WINDOW_HEIGHT;//(WINDOW_HEIGHT - 25) / 2;
+        if(spawnX != NULL && spawnY != NULL){
+            rect->x = *spawnX + rand() % 30;
+            rect->y = *spawnY + rand() % 30;
+        }
+        //make sure the asteroid doesn't spawn on or very near to the ship
+        if((abs(rect->x - shipX) <= 75 && abs(rect->y - shipY) <= 75) && (spawnX == NULL && spawnY == NULL)){
+            spawnAsteroid(cnt, id, list, boundaries, shipX, shipY, spawnX, spawnY, size);
+            return;
+        }
         Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
         int astSprite = (rand() % 9) + 1;
 
@@ -244,11 +287,18 @@ void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WIN
         Object *ob = createObject("asteroid", *id, sprt);
         as->obj = ob;
         as->spv = sprt;
+        //as->size = (rand()%4) + 2;
+        // if(spawnX != NULL && spawnY != NULL){
+        //     as->size = size/2;
+        // }
+        //size according to the size it's given
+        rect->h = 50;//(int)(50.0 * ((double) as->size/5));
+        rect->w = 50;//(int)(50.0 * ((double) as->size/5));
         int x = rect->x / 25;
         int y = rect->y / 25;
+        //checkXYInBoundary(&x, &y);
 
         boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
-        ob->boundary_list = boundaries[x][y].objs;
 
         *list = LinkedListAdd(*list, as);
         *id = *id+1;
@@ -678,7 +728,7 @@ int main(int argc, char *argv[])
             // LinkedList *tempList = LinkedListAdd(shots, shot);
             // shots = tempList;
         //}
-        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries);
+        spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship_val.loc->x, ship_val.loc->y, NULL, NULL, -1);
 
         SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
         SDL_RenderClear(rend);
@@ -692,11 +742,17 @@ int main(int argc, char *argv[])
                 Object *hit = detectCollision(shot_laser->spv->loc->x, shot_laser->spv->loc->y, "asteroid", boundaries, true);
                 if(hit != NULL){
                     printf("%s\n", "laser");
+                    int spawnX = 0;
+                    int spawnY = 0;
+                    int asteroid_size = 0;
                     LinkedList *tempList = asteroids;
                     LinkedList *last = NULL;
                     while(tempList != NULL){
                         Asteroid *as = (Asteroid*)tempList->value;
                         if(as->obj == hit){
+                            spawnX = as->spv->loc->x;
+                            spawnY = as->spv->loc->y;
+                            //asteroid_size = as->size;
                             LinkedList *rest = tempList->next;
                             if(last != NULL && last->value != NULL){
                                 last->next = tempList->next;
@@ -737,8 +793,6 @@ int main(int argc, char *argv[])
                             if(prev != NULL && prev->value != NULL){
                                 prev->next = temp->next;
                             }else{
-                                addShot = true;
-                                addShotCounter = 0;
                                 if(temp->next != NULL){
                                     shots = temp->next;
                                 }else{
@@ -752,14 +806,14 @@ int main(int argc, char *argv[])
                             free(shot_laser->obj->type);
                             free(shot_laser->obj);
                             free(shot_laser);
-                            //TODO memory glitch is caused by this object in the boundary not being deleted properly, check deletion code and check if when spawned it doesn't get removed
-                            shot_laser->obj->type = "pooop";
                             Queue *next_item = temp->next;
                             //checks if it's the head of the list, in that case do not free it
                             if(shots->length != 0){
                                 free(temp);
                             }
                             temp = next_item;
+                            //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY, asteroid_size);
+                            //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship.x, ship.y, &spawnX, &spawnY, asteroid_size);
                             break;
                         }
                       //  lasers_prev = lasers;
