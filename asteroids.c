@@ -230,7 +230,7 @@ void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25]
 }
 
 void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    if(rand() <= 326 && *cnt < 10){ 
+    if(rand() <= 326 && *cnt < 3){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
@@ -256,6 +256,44 @@ void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WIN
         *id = *id+1;
         *cnt = *cnt+1;
     }
+}
+
+void spawnAsteroidParticle(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int newX, int newY, int size){
+    if(size/2 <= 6){
+        return;
+    }
+
+    SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
+    rect->h = size/2;
+    rect->w = size/2;
+    printf("size %d size hald %d\n", size, rect->h);
+    rect->x = newX + rand() % 20;//(WINDOW_WIDTH - 25) / 2;
+    if(rect->x >= WINDOW_WIDTH-size/2){
+        rect->x = WINDOW_WIDTH-size/2;
+    }
+    rect->y = newY + rand() % 20;//(WINDOW_HEIGHT - 25) / 2;
+    if(rect->y >= WINDOW_HEIGHT-size/2){
+        rect->y = WINDOW_HEIGHT-size/2;
+    }
+    Sprite_Values *sprt = createSpriteValues(rect, 1, 1, 25, 25, (rand() % 361), SDL_FLIP_NONE);
+    int astSprite = (rand() % 9) + 1;
+
+    //create the array in dynamic memory
+    sprt->frame_offsets[0][0] = 25 * astSprite;
+    sprt->frame_offsets[0][1] = 0;
+    Asteroid *as = (Asteroid*)malloc(sizeof(Asteroid));
+    Object *ob = createObject("asteroid", *id, sprt);
+    as->obj = ob;
+    as->spv = sprt;
+    int x = rect->x / 25;
+    int y = rect->y / 25;
+    checkXYInBoundary(&x, &y);
+    boundaries[x][y].objs = LinkedListAdd(boundaries[x][y].objs, ob);
+    ob->boundary_list = boundaries[x][y].objs;
+
+    *list = LinkedListAdd(*list, as);
+    *id = *id+1;
+    *cnt = *cnt+1;
 }
 
 // void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25], int shipX, int shipY, int *spawnX, int *spawnY, bool force){
@@ -734,6 +772,7 @@ int main(int argc, char *argv[])
                     printf("%s\n", "laser");
                     int newX = 0;
                     int newY = 0;
+                    int newSize = 0;
                     LinkedList *tempList = asteroids;
                     LinkedList *last = NULL;
                     while(tempList != NULL){
@@ -753,6 +792,7 @@ int main(int argc, char *argv[])
                             }
                             newX = as->spv->loc->x;
                             newY = as->spv->loc->y;
+                            newSize = as->spv->loc->h;
                             if(tempList != asteroids){
                                 free(tempList);
                             }
@@ -778,13 +818,21 @@ int main(int argc, char *argv[])
                   //  while(lasers != NULL){
                         if(temp->value == shot_laser){
                             printf("laser value %d %d\n", temp->value, shot_laser);
+                            addShot = true;
+                            addShotCounter = 0;
                             if(prev != NULL && prev->value != NULL){
                                 prev->next = temp->next;
+                                if(temp->next != NULL){
+                                    prev->last = temp->last;
+                                }
                             }else{
-                                addShot = true;
-                                addShotCounter = 0;
                                 if(temp->next != NULL){
                                     shots = temp->next;
+                                    if(temp->length - 1 < 0){
+                                        shots->length = 0;
+                                    }else{
+                                        shots->length = temp->length - 1;
+                                    }
                                 }else{
                                     shots->last = NULL;
                                     shots->length = 0;
@@ -808,7 +856,8 @@ int main(int argc, char *argv[])
                             temp = next_item;
                             addShot = false;
                             addShotCounter = 0;
-                            spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries);
+                            spawnAsteroidParticle(&asteroidCount, &asteroidID, &asteroids, boundaries, newX, newY, newSize);
+                            spawnAsteroidParticle(&asteroidCount, &asteroidID, &asteroids, boundaries, newX, newY, newSize);
                             //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship_val.loc->x, ship_val.loc->y, &newX, &newY, true);
                             //spawnAsteroid(&asteroidCount, &asteroidID, &asteroids, boundaries, ship_val.loc->x, ship_val.loc->y, &newX, &newY, true);
                             break;
