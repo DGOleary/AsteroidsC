@@ -230,7 +230,7 @@ void shotCheck(Laser *laser, SDL_Objs *obj, Boundary boundaries[WINDOW_WIDTH/25]
 }
 
 void spawnAsteroid(int* cnt, int *id, LinkedList **list, Boundary boundaries[WINDOW_WIDTH/25][WINDOW_HEIGHT/25]){
-    if(rand() <= 326 && *cnt < 3){ 
+    if(rand() <= 326 && *cnt < 10){ 
         SDL_Rect *rect = (SDL_Rect*)malloc(sizeof(SDL_Rect));
         rect->h = 50;
         rect->w = 50;
@@ -820,13 +820,18 @@ int main(int argc, char *argv[])
                             printf("laser value %d %d\n", temp->value, shot_laser);
                             addShot = true;
                             addShotCounter = 0;
-                            if(prev != NULL && prev->value != NULL){
+                              if(prev != NULL && prev->value != NULL){
                                 prev->next = temp->next;
-                                if(temp->next != NULL){
-                                    prev->last = temp->last;
+                                if(temp == shots->last){
+                                    Queue *find_last = prev;
+                                    while(find_last->next != NULL){
+                                        find_last = find_last->next;
+                                    }
+                                    shots->last = find_last;
                                 }
                             }else{
                                 if(temp->next != NULL){
+                                    temp->last = shots->last;
                                     shots = temp->next;
                                     if(temp->length - 1 < 0){
                                         shots->length = 0;
